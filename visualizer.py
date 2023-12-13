@@ -45,12 +45,15 @@ for agent_id, path in agents.items():
     agents[agent_id] = interpolate_path(path)
 
 # 애니메이션 총 시간 계산
-total_time = max([path[-1][2] for path in agents.values()])
+total_time = max([path[-1][2] for path in agents.values() if path])
 
 
 def add_start_end_points(ax, agents):
     for agent_id, path in agents.items():
         # 시작점과 도착점 추가
+        if not path:
+            print(f'Agent {agent_id} has no path')
+            continue
         start_x, start_y, _ = path[0]
         end_x, end_y, _ = path[-1]
         ax.plot(start_x, start_y, 'go')  # 녹색은 시작점
@@ -76,6 +79,8 @@ def animate(frame):
     time_text.set_text(f'Time: {time:.2f}s')
     annotations = []
     for agent_id, path in agents.items():
+        if not path:
+            continue
         position = next(((x, y) for x, y, t in path if t >= time), path[-1][:2])
         circles[agent_id].center = position
         annotation = ax.text(position[0], position[1], str(agent_id), color='white', fontsize=8, ha='center',
@@ -86,8 +91,8 @@ def animate(frame):
 
 # 기존 애니메이션 구성 코드는 그대로 유지
 fig, ax = plt.subplots(figsize=(10, 10))
-ax.set_xlim(0, 10)
-ax.set_ylim(0, 10)
+ax.set_xlim(0, 30)
+ax.set_ylim(0, 30)
 add_start_end_points(ax, agents)  # 시작점과 도착점, 에이전트 번호 추가
 
 time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
