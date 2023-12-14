@@ -30,12 +30,16 @@ bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, con
 
       // check if temporal constraint is satisfied
       if (prev_time > to_time || from_time > next_time) continue;
-      // TODO: check if spatial constraint is satisfied
+      // check if spatial constraint is satisfied
+      if (calculateDistance(prev_point, to_point) >= calculateDistance(prev_point, next_point) + radius +
+                                                         calculateDistance(from_point, to_point) +
+                                                         env.radii[occupied_agent_id])
+        continue;
 
       vector<Point> interpolated_points;
       vector<double> interpolated_times;
       interpolatePointTime(agent_id, from_point, to_point, from_time, to_time, interpolated_points, interpolated_times);
-      for (int j = 0; j < interpolated_points.size() - 1; ++j) {
+      for (int j = 0; j < interpolated_points.size(); ++j) {
         const auto occupied_expand_time = interpolated_times[j] - prev_time;
         const auto occupied_theta =
             atan2(get<1>(next_point) - get<1>(prev_point), get<0>(next_point) - get<0>(prev_point));
@@ -52,7 +56,10 @@ bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, con
     auto [last_point, last_time] = path_table[occupied_agent_id].back();
     // check if temporal constraint is satisfied
     if (last_time > to_time) continue;
-    // TODO: check if spatial constraint is satisfied
+    // check if spatial constraint is satisfied
+    if (calculateDistance(last_point, to_point) >=
+        radius + calculateDistance(from_point, to_point) + env.radii[occupied_agent_id])
+      continue;
 
     vector<Point> interpolated_points;
     interpolatePoint(agent_id, from_point, to_point, interpolated_points);
@@ -73,13 +80,18 @@ bool ConstraintTable::targetConstrained(const Point& other_point, double other_t
     for (int i = 0; i < path_table[occupied_agent_id].size() - 1; ++i) {
       auto [prev_point, prev_time] = path_table[occupied_agent_id][i];
       auto [next_point, next_time] = path_table[occupied_agent_id][i + 1];
-      // check time is matched
+      // check if temporal constraint is satisfied
       if (other_time >= next_time) continue;
+      // check if spatial constraint is satisfied
+      if (calculateDistance(prev_point, other_point) >=
+          calculateDistance(prev_point, next_point) + other_radius + env.radii[occupied_agent_id])
+        continue;
+
       vector<Point> interpolated_points;
       vector<double> interpolated_times;
       interpolatePointTime(occupied_agent_id, prev_point, next_point, prev_time, next_time, interpolated_points,
                            interpolated_times);
-      for (int j = 0; j < interpolated_points.size() - 1; ++j) {
+      for (int j = 0; j < interpolated_points.size(); ++j) {
         if (interpolated_times[j] < other_time) continue;
         if (calculateDistance(interpolated_points[j], other_point) < other_radius + env.radii[occupied_agent_id]) {
           return true;

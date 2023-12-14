@@ -13,9 +13,6 @@ Path SIRRT::run() {
     if (new_node == nullptr) {
       continue;
     }
-    new_node->parent = nearest_node;
-    // TODO : update intervals
-    new_node->intervals = {{new_node->time, numeric_limits<double>::max()}};
     nodes.push_back(new_node);
 
     // check goal
@@ -84,6 +81,8 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
       return nullptr;
     new_node->intervals.emplace_back(get<0>(interval) + expand_time, get<1>(interval) + expand_time);
   }
+
+  new_node->parent = from_node;
 
   return new_node;
 }

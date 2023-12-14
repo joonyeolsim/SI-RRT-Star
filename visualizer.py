@@ -101,8 +101,8 @@ def animate(frame):
 
 # 기존 애니메이션 구성 코드는 그대로 유지
 fig, ax = plt.subplots(figsize=(10, 10))
-ax.set_xlim(0, 30)
-ax.set_ylim(0, 30)
+ax.set_xlim(0, 32)
+ax.set_ylim(0, 32)
 add_start_end_points(ax, agents)  # 시작점과 도착점, 에이전트 번호 추가
 
 time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
