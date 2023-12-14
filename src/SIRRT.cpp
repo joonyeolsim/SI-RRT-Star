@@ -19,9 +19,8 @@ Path SIRRT::run() {
     nodes.push_back(new_node);
 
     // check goal
-    // if (calculateDistance(new_node->point, goal_point) < env.threshold &&
-    //     !constraint_table.targetConstrained(new_node->point, new_node->time, env.radii[agent_id])) {
-    if (calculateDistance(new_node->point, goal_point) < env.threshold) {
+    if (calculateDistance(new_node->point, goal_point) < env.threshold &&
+        !constraint_table.targetConstrained(new_node->point, new_node->time, env.radii[agent_id])) {
       path = updatePath(new_node);
       assert(calculateDistance(get<0>(path.front()), start_point) < env.threshold);
       assert(calculateDistance(get<0>(path.back()), goal_point) < env.threshold);
@@ -79,9 +78,9 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
   auto new_node = make_shared<LLNode>(to_point, from_node->time + expand_time);
 
   for (auto& interval : from_node->intervals) {
-    if (constraint_table.obstacleConstrained(agent_id, from_node, to_point, env.radii[agent_id])) return nullptr;
-    if (constraint_table.pathConstrained(agent_id, from_node, to_point, from_node->time + expand_time,
-                                         env.radii[agent_id]))
+    if (constraint_table.obstacleConstrained(agent_id, from_node->point, to_point, env.radii[agent_id])) return nullptr;
+    if (constraint_table.pathConstrained(agent_id, from_node->point, to_point, from_node->time,
+                                         from_node->time + expand_time, env.radii[agent_id]))
       return nullptr;
     new_node->intervals.emplace_back(get<0>(interval) + expand_time, get<1>(interval) + expand_time);
   }

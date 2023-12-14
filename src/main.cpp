@@ -4,9 +4,9 @@
 #include "SharedEnv.h"
 
 int main() {
-  int num_of_agents = 10;
-  int width = 10;
-  int height = 10;
+  int num_of_agents = 30;
+  int width = 32;
+  int height = 32;
   vector<Point> start_points;
   vector<Point> goal_points;
   vector<double> radii;

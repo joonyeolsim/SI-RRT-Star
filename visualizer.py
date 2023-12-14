@@ -110,6 +110,6 @@ circles = {agent_id: Circle((0, 0), 0.5, fc='blue') for agent_id in agents.keys(
 for circle in circles.values():
     ax.add_patch(circle)
 
-ani = animation.FuncAnimation(fig, animate, frames=int(total_time * sample), init_func=init, blit=True, interval=30)
+ani = animation.FuncAnimation(fig, animate, frames=int(total_time * sample), init_func=init, blit=True, interval=15)
 
 plt.show()
