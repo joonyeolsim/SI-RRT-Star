@@ -86,6 +86,16 @@ def animate(frame):
         annotation = ax.text(position[0], position[1], str(agent_id), color='white', fontsize=8, ha='center',
                              va='center')
         annotations.append(annotation)
+    # check if agents have collided
+
+    for agent_id, circle in circles.items():
+        circle.set_facecolor('blue')
+        for other_agent_id, other_circle in circles.items():
+            if agent_id == other_agent_id:
+                continue
+            if np.linalg.norm(np.array(circle.center) - np.array(other_circle.center)) < 0.5 + 0.5:
+                circle.set_facecolor('red')
+                print(f'Collision between agents {agent_id} and {other_agent_id} at time {time:.2f}s')
     return [time_text] + list(circles.values()) + annotations
 
 
@@ -100,6 +110,6 @@ circles = {agent_id: Circle((0, 0), 0.5, fc='blue') for agent_id in agents.keys(
 for circle in circles.values():
     ax.add_patch(circle)
 
-ani = animation.FuncAnimation(fig, animate, frames=int(total_time * sample), init_func=init, blit=True, interval=10)
+ani = animation.FuncAnimation(fig, animate, frames=int(total_time * sample), init_func=init, blit=True, interval=30)
 
 plt.show()

@@ -19,13 +19,14 @@ Path SIRRT::run() {
     nodes.push_back(new_node);
 
     // check goal
-    if (calculateDistance(new_node->point, goal_point) < env.threshold &&
-        !constraint_table.targetConstrained(new_node->point, new_node->time, env.radii[agent_id])) {
+    // if (calculateDistance(new_node->point, goal_point) < env.threshold &&
+    //     !constraint_table.targetConstrained(new_node->point, new_node->time, env.radii[agent_id])) {
+    if (calculateDistance(new_node->point, goal_point) < env.threshold) {
       path = updatePath(new_node);
       assert(calculateDistance(get<0>(path.front()), start_point) < env.threshold);
       assert(calculateDistance(get<0>(path.back()), goal_point) < env.threshold);
       // print path
-      cout << "path: ";
+      cout << "path" << agent_id << ": ";
       for (const auto& state : path) {
         cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
       }
@@ -53,7 +54,7 @@ Point SIRRT::generateRandomPoint() {
   }
 }
 
-shared_ptr<LLNode> SIRRT::getNearestNode(Point point) {
+shared_ptr<LLNode> SIRRT::getNearestNode(const Point& point) const {
   double min_distance = numeric_limits<double>::max();
   shared_ptr<LLNode> nearest_node;
   for (const auto& node : nodes) {
@@ -66,39 +67,25 @@ shared_ptr<LLNode> SIRRT::getNearestNode(Point point) {
   return nearest_node;
 }
 
-shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, Point to_point) {
-  const double expand_distance = min(env.max_expand_distances[agent_id], calculateDistance(from_node->point, to_point));
-  const double theta = atan2(get<1>(to_point) - get<1>(from_node->point), get<0>(to_point) - get<0>(from_node->point));
+shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point& random_point) const {
+  const double expand_distance =
+      min(env.max_expand_distances[agent_id], calculateDistance(from_node->point, random_point));
+  const double theta =
+      atan2(get<1>(random_point) - get<1>(from_node->point), get<0>(random_point) - get<0>(from_node->point));
   const double expand_time = expand_distance / env.velocities[agent_id];
+  const Point to_point = make_tuple(get<0>(from_node->point) + env.velocities[agent_id] * cos(theta) * expand_time,
+                                    get<1>(from_node->point) + env.velocities[agent_id] * sin(theta) * expand_time);
 
-  auto new_node = make_shared<LLNode>(from_node->point, from_node->time + expand_time);
-  const auto timestep = static_cast<int>(floor(expand_distance / env.velocities[agent_id]));
+  auto new_node = make_shared<LLNode>(to_point, from_node->time + expand_time);
 
   for (auto& interval : from_node->intervals) {
-    for (int time = 0; time < timestep; ++time) {
-      const Point interpoated_point =
-          make_tuple(get<0>(from_node->point) + env.velocities[agent_id] * cos(theta) * time,
-                     get<1>(from_node->point) + env.velocities[agent_id] * sin(theta) * time);
-      if (constraint_table.obstacleConstrained(interpoated_point, env.radii[agent_id])) return nullptr;
-      if (constraint_table.pathConstrained(interpoated_point, from_node->time + time, env.radii[agent_id]))
-        return nullptr;
-      new_node->point = interpoated_point;
-    }
-
-    const double remain_time = fmod(expand_distance, env.velocities[agent_id]);
-    if (remain_time > 0.0) {
-      const Point interpoated_point =
-          make_tuple(get<0>(from_node->point) + env.velocities[agent_id] * cos(theta) * expand_time,
-                     get<1>(from_node->point) + env.velocities[agent_id] * sin(theta) * expand_time);
-      if (constraint_table.obstacleConstrained(interpoated_point, env.radii[agent_id])) return nullptr;
-      if (constraint_table.pathConstrained(interpoated_point, from_node->time + expand_time, env.radii[agent_id]))
-        return nullptr;
-      new_node->point = interpoated_point;
-    }
-    assert(calculateDistance(new_node->point, from_node->point) < env.max_expand_distances[agent_id] + env.threshold);
-
+    if (constraint_table.obstacleConstrained(agent_id, from_node, to_point, env.radii[agent_id])) return nullptr;
+    if (constraint_table.pathConstrained(agent_id, from_node, to_point, from_node->time + expand_time,
+                                         env.radii[agent_id]))
+      return nullptr;
     new_node->intervals.emplace_back(get<0>(interval) + expand_time, get<1>(interval) + expand_time);
   }
+
   return new_node;
 }
 

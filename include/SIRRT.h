@@ -32,8 +32,8 @@ class SIRRT {
   ~SIRRT() = default;
   Path run();
   Point generateRandomPoint();
-  shared_ptr<LLNode> getNearestNode(Point point);
-  shared_ptr<LLNode> steer(const shared_ptr<LLNode>& from_node, Point to_point);
+  shared_ptr<LLNode> getNearestNode(const Point& point) const;
+  shared_ptr<LLNode> steer(const shared_ptr<LLNode>& from_node, const Point& random_point) const;
   Path updatePath(const shared_ptr<LLNode>& goal_node);
   void release();
 };
