@@ -31,12 +31,16 @@ int main() {
   env.generateRandomInstance();
   ConstraintTable constraint_table(env, num_of_agents);
   Solution soluiton;
+  auto start = std::chrono::high_resolution_clock::now();
   for (int agent_id = 0; agent_id < num_of_agents; ++agent_id) {
     SIRRT sirrt(env, constraint_table, agent_id);
     auto path = sirrt.run();
     constraint_table.insertPathToConstraint(agent_id, path);
     soluiton.emplace_back(path);
   }
+  auto stop = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double, std::ratio<1>> duration = stop - start;
+  std::cout << "Time taken by function: " << duration.count() << " seconds" << std::endl;
   saveSolution(soluiton, "../solution.txt");
   return 0;
 }
