@@ -10,11 +10,12 @@
 class LLNode {
  public:
   Point point;
-  double time;
   shared_ptr<LLNode> parent;
+  vector<double> earliest_arrival_times;
   vector<Interval> intervals;
+  vector<int> parent_interval_indicies;
 
-  LLNode(Point point, double time) : point(std::move(point)), time(time), parent(nullptr) {}
+  explicit LLNode(Point point) : point(std::move(point)), parent(nullptr) {}
 };
 
 #endif  // LLNODE_H

@@ -2,8 +2,9 @@
 
 Path SIRRT::run() {
   release();
-  const auto start_node = make_shared<LLNode>(start_point, 0.0);
-  start_node->intervals = {{start_node->time, numeric_limits<double>::max()}};
+  const auto start_node = make_shared<LLNode>(start_point);
+  start_node->earliest_arrival_times = {0};
+  start_node->intervals = {{0, numeric_limits<double>::max()}};
   nodes.push_back(start_node);
 
   while (env.iterations[agent_id]--) {
@@ -16,24 +17,27 @@ Path SIRRT::run() {
     nodes.push_back(new_node);
 
     // check goal
-    if (calculateDistance(new_node->point, goal_point) < env.threshold &&
-        !constraint_table.targetConstrained(new_node->point, new_node->time, env.radii[agent_id])) {
-      path = updatePath(new_node);
-      assert(calculateDistance(get<0>(path.front()), start_point) < env.threshold);
-      assert(calculateDistance(get<0>(path.back()), goal_point) < env.threshold);
-      // print path
-      cout << "path" << agent_id << ": ";
-      for (const auto& state : path) {
-        cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
+    if (calculateDistance(new_node->point, goal_point) < env.threshold) {
+      for (int i = 0; i < new_node->intervals.size(); ++i) {
+        if (constraint_table.targetConstrained(new_node->point, get<0>(new_node->intervals[i]), env.radii[agent_id]))
+          continue;
+        path = updatePath(new_node, i);
+        assert(calculateDistance(get<0>(path.front()), start_point) < env.threshold);
+        assert(calculateDistance(get<0>(path.back()), goal_point) < env.threshold);
+        // print path
+        cout << "path" << agent_id << ": ";
+        for (const auto& state : path) {
+          cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
+        }
+        cout << endl;
+        // assert velocity always be 1.0m/s
+        for (int i = 0; i < path.size() - 1; ++i) {
+          const double distance = calculateDistance(get<0>(path[i]), get<0>(path[i + 1]));
+          const double time_diff = get<1>(path[i + 1]) - get<1>(path[i]);
+          assert(distance / time_diff < env.velocities[agent_id] + env.threshold);
+        }
+        return path;
       }
-      cout << endl;
-      // assert velocity always be 1.0m/s
-      for (int i = 0; i < path.size() - 1; ++i) {
-        const double distance = calculateDistance(get<0>(path[i]), get<0>(path[i + 1]));
-        const double time_diff = get<1>(path[i + 1]) - get<1>(path[i]);
-        assert(distance / time_diff < env.velocities[agent_id] + env.threshold);
-      }
-      return path;
     }
   }
 
@@ -72,29 +76,48 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
   const Point to_point = make_tuple(get<0>(from_node->point) + env.velocities[agent_id] * cos(theta) * expand_time,
                                     get<1>(from_node->point) + env.velocities[agent_id] * sin(theta) * expand_time);
 
-  auto new_node = make_shared<LLNode>(to_point, from_node->time + expand_time);
+  auto new_node = make_shared<LLNode>(to_point);
+  if (constraint_table.obstacleConstrained(agent_id, from_node->point, to_point, env.radii[agent_id])) return nullptr;
 
-  for (auto& interval : from_node->intervals) {
-    if (constraint_table.obstacleConstrained(agent_id, from_node->point, to_point, env.radii[agent_id])) return nullptr;
-    if (constraint_table.pathConstrained(agent_id, from_node->point, to_point, from_node->time,
-                                         from_node->time + expand_time, env.radii[agent_id]))
-      return nullptr;
-    new_node->intervals.emplace_back(get<0>(interval) + expand_time, get<1>(interval) + expand_time);
+  vector<Interval> safe_intervals;
+  constraint_table.getSafeIntervalTable(agent_id, to_point, env.radii[agent_id], safe_intervals);
+  for (int i = 0; i < from_node->intervals.size(); ++i) {
+    const double lower_bound = from_node->earliest_arrival_times[i] + expand_time;
+    const double upper_bound = get<1>(from_node->intervals[i]) + expand_time;
+    for (auto& safe_interval : safe_intervals) {
+      if (lower_bound > get<1>(safe_interval) || upper_bound < get<0>(safe_interval)) continue;
+      if (constraint_table.pathConstrained(agent_id, from_node->point, to_point, from_node->earliest_arrival_times[i],
+                                           from_node->earliest_arrival_times[i] + expand_time, env.radii[agent_id]))
+        continue;
+      new_node->earliest_arrival_times.emplace_back(lower_bound);
+      new_node->intervals.emplace_back(safe_interval);
+      new_node->parent_interval_indicies.emplace_back(i);
+    }
   }
-
+  if (new_node->earliest_arrival_times.empty()) {
+    return nullptr;
+  }
   new_node->parent = from_node;
-
   return new_node;
 }
 
-Path SIRRT::updatePath(const shared_ptr<LLNode>& goal_node) {
+double get_earliest_arrival_time(const shared_ptr<LLNode>& node, const int interval_index) {
+  return node->earliest_arrival_times[interval_index];
+}
+
+Path SIRRT::updatePath(const shared_ptr<LLNode>& goal_node, const int interval_index) {
   Path path;
-  shared_ptr<LLNode> node = goal_node;
-  while (node != nullptr) {
-    path.emplace_back(node->point, node->time);
-    node = node->parent;
+  shared_ptr<LLNode> current_node = goal_node;
+  int current_interval_index = interval_index;
+  while (current_node) {
+    path.emplace_back(current_node->point, current_node->earliest_arrival_times[current_interval_index]);
+    current_node = current_node->parent;
+    if (current_node && !current_node->parent_interval_indicies.empty()) {
+      current_interval_index = current_node->parent_interval_indicies[current_interval_index];
+    }
   }
   reverse(path.begin(), path.end());
+
   return path;
 }
 

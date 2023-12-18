@@ -18,9 +18,8 @@ class ConstraintTable {
   ConstraintTable(SharedEnv& env, int num_of_agents) : env(env) { path_table.resize(num_of_agents); }
   void insertPathToConstraint(int agent_id, Path path);
   bool obstacleConstrained(int agent_id, const Point& from_point, const Point& to_point, double radius) const;
+  void getSafeIntervalTable(int agent_id, const Point& to_point, double radius, vector<Interval>& safe_intervals) const;
   bool pathConstrained(int agent_id, const Point& from_point, const Point& to_point, double from_time, double to_time,
-                       double radius) const;
-  bool pathConstrained(int agent_id, const Point& from_point, const Point& to_point, double to_time,
                        double radius) const;
   bool targetConstrained(const Point& other_point, double other_time, double other_radius) const;
   void interpolatePoint(int agent_id, const Point& from_point, const Point& to_point,
