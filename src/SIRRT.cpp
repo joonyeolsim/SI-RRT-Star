@@ -98,6 +98,7 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
     return nullptr;
   }
   new_node->parent = from_node;
+  cout << "New safe interval size: " << new_node->intervals.size() << endl;
   return new_node;
 }
 
