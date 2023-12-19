@@ -20,6 +20,7 @@ bool ConstraintTable::obstacleConstrained(int agent_id, const Point& from_point,
 
 bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, const Point& to_point, double from_time,
                                       double to_time, double radius) const {
+  assert(from_time < to_time);
   const double expand_distance = calculateDistance(from_point, to_point);
   for (auto occupied_agent_id = 0; occupied_agent_id < path_table.size(); ++occupied_agent_id) {
     if (occupied_agent_id == agent_id) continue;
@@ -90,7 +91,7 @@ void ConstraintTable::getSafeIntervalTable(int agent_id, const Point& to_point, 
 
       vector<Point> interpolated_points;
       vector<double> interpolated_times;
-      interpolatePointTime(agent_id, prev_point, next_point, prev_time, next_time, interpolated_points,
+      interpolatePointTime(occupied_agent_id, prev_point, next_point, prev_time, next_time, interpolated_points,
                            interpolated_times);
       for (int j = 0; j < interpolated_points.size(); ++j) {
         const auto occupied_expand_time = interpolated_times[j] - prev_time;
@@ -104,6 +105,7 @@ void ConstraintTable::getSafeIntervalTable(int agent_id, const Point& to_point, 
           collision_start_time = interpolated_times[j];
         } else if (calculateDistance(to_point, occupied_point) >= radius + env.radii[occupied_agent_id] & !is_safe) {
           is_safe = true;
+          assert(collision_start_time < interpolated_times[j]);
           insertToSafeIntervalTable(safe_intervals, collision_start_time, interpolated_times[j]);
         }
       }
@@ -195,6 +197,7 @@ void ConstraintTable::interpolatePoint(int agent_id, const Point& from_point, co
 void ConstraintTable::interpolatePointTime(int agent_id, const Point& from_point, const Point& to_point,
                                            double from_time, double to_time, vector<Point>& interpolated_points,
                                            vector<double>& interpoated_times) const {
+  assert(from_time < to_time);
   const double expand_distance = calculateDistance(from_point, to_point);
   const double theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
   const double expand_time = expand_distance / env.velocities[agent_id];

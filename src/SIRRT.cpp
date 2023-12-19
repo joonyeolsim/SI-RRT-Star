@@ -81,16 +81,21 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
 
   vector<Interval> safe_intervals;
   constraint_table.getSafeIntervalTable(agent_id, to_point, env.radii[agent_id], safe_intervals);
+  // TODO: fix bugs here
   for (int i = 0; i < from_node->intervals.size(); ++i) {
-    const double lower_bound = from_node->earliest_arrival_times[i] + expand_time;
+    const double lower_bound = get<0>(from_node->intervals[i]) + expand_time;
     const double upper_bound = get<1>(from_node->intervals[i]) + expand_time;
+    assert(lower_bound > 0);
+    assert(lower_bound < upper_bound);
     for (auto& safe_interval : safe_intervals) {
-      if (lower_bound > get<1>(safe_interval) || upper_bound < get<0>(safe_interval)) continue;
+      if (lower_bound > get<1>(safe_interval) || upper_bound <= get<0>(safe_interval)) continue;
       if (constraint_table.pathConstrained(agent_id, from_node->point, to_point, from_node->earliest_arrival_times[i],
                                            from_node->earliest_arrival_times[i] + expand_time, env.radii[agent_id]))
         continue;
       new_node->earliest_arrival_times.emplace_back(lower_bound);
-      new_node->intervals.emplace_back(safe_interval);
+      assert(max(get<0>(safe_interval), lower_bound) < min(get<1>(safe_interval), upper_bound));
+      new_node->intervals.emplace_back(max(get<0>(safe_interval), lower_bound),
+                                       min(get<1>(safe_interval), upper_bound));
       new_node->parent_interval_indicies.emplace_back(i);
     }
   }
@@ -111,11 +116,12 @@ Path SIRRT::updatePath(const shared_ptr<LLNode>& goal_node, const int interval_i
   shared_ptr<LLNode> current_node = goal_node;
   int current_interval_index = interval_index;
   while (current_node) {
+    cout << current_node->earliest_arrival_times[current_interval_index] << endl;
     path.emplace_back(current_node->point, current_node->earliest_arrival_times[current_interval_index]);
-    current_node = current_node->parent;
     if (current_node && !current_node->parent_interval_indicies.empty()) {
       current_interval_index = current_node->parent_interval_indicies[current_interval_index];
     }
+    current_node = current_node->parent;
   }
   reverse(path.begin(), path.end());
 
