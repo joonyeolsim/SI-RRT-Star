@@ -8,6 +8,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include <algorithm>
+#include <boost/functional/hash.hpp>
 #include <boost/heap/fibonacci_heap.hpp>
 #include <cassert>
 #include <chrono>
@@ -33,6 +34,16 @@ typedef vector<Path> Solution;
 void savePath(const Path& path, const string& filename);
 void saveSolution(const Solution& solution, const string& filename);
 double calculateDistance(Point point1, Point point2);
+
+struct PointHash {
+  size_t operator()(const Point& point) const {
+    auto [x, y] = point;
+    size_t seed = 0;
+    boost::hash_combine(seed, x);
+    boost::hash_combine(seed, y);
+    return seed;
+  }
+};
 
 class Obstacle {
  public:

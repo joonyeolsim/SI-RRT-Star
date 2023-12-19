@@ -4,7 +4,7 @@
 #include "SharedEnv.h"
 
 int main() {
-  int num_of_agents = 30;
+  int num_of_agents = 50;
   int width = 32;
   int height = 32;
   vector<Point> start_points;
@@ -29,11 +29,12 @@ int main() {
   SharedEnv env = SharedEnv(num_of_agents, width, height, start_points, goal_points, radii, max_expand_distances,
                             velocities, iterations, goal_sample_rates, obstacles);
   env.generateRandomInstance();
-  ConstraintTable constraint_table(env, num_of_agents);
+  ConstraintTable constraint_table(env);
   Solution soluiton;
   auto start = std::chrono::high_resolution_clock::now();
   for (int agent_id = 0; agent_id < num_of_agents; ++agent_id) {
-    SIRRT sirrt(env, constraint_table, agent_id);
+    ReservationTable reservation_table(env);
+    SIRRT sirrt(agent_id, env, constraint_table, reservation_table);
     auto path = sirrt.run();
     constraint_table.insertPathToConstraint(agent_id, path);
     soluiton.emplace_back(path);

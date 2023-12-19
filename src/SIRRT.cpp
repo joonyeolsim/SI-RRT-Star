@@ -3,6 +3,9 @@
 Path SIRRT::run() {
   release();
   const auto start_node = make_shared<LLNode>(start_point);
+  vector<Interval> safe_intervals;
+  constraint_table.getSafeIntervalTable(agent_id, start_point, env.radii[agent_id], safe_intervals);
+  reservation_table.safe_interval_table[start_point] = safe_intervals;
   start_node->earliest_arrival_times = {0};
   start_node->intervals = {{0, numeric_limits<double>::max()}};
   nodes.push_back(start_node);
@@ -83,7 +86,7 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
 
   vector<Interval> safe_intervals;
   constraint_table.getSafeIntervalTable(agent_id, to_point, env.radii[agent_id], safe_intervals);
-  // TODO: fix bugs here
+  reservation_table.safe_interval_table[to_point] = safe_intervals;
   for (int i = 0; i < from_node->intervals.size(); ++i) {
     const double lower_bound = get<0>(from_node->intervals[i]) + expand_time;
     const double upper_bound = get<1>(from_node->intervals[i]) + expand_time;
@@ -91,6 +94,25 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
     assert(lower_bound < upper_bound);
     for (auto& safe_interval : safe_intervals) {
       if (lower_bound > get<1>(safe_interval) || upper_bound <= get<0>(safe_interval)) continue;
+
+      // check wait constraint
+      double from_time = get<0>(safe_interval) - expand_time;
+      if (from_time < get<0>(from_node->intervals[i])) from_time = get<0>(from_node->intervals[i]);
+      assert(from_node->earliest_arrival_times[i] <= from_time);
+
+      const auto from_safe_intervals = reservation_table.safe_interval_table.at(from_node->point);
+      // find safe interval which contains from_time from safe_intervals
+      auto it = find_if(from_safe_intervals.begin(), from_safe_intervals.end(), [&](const Interval& interval) {
+        return get<0>(interval) <= from_time && from_time < get<1>(interval);
+      });
+
+      // get first element of it
+      const auto& from_safe_interval = *it;
+      assert(get<0>(from_safe_interval) <= from_time && from_time < get<1>(from_safe_interval));
+
+      if (get<1>(from_safe_interval) <= from_time) continue;
+
+      // check move constraint
       if (constraint_table.pathConstrained(agent_id, from_node->point, to_point, from_node->earliest_arrival_times[i],
                                            from_node->earliest_arrival_times[i] + expand_time, env.radii[agent_id]))
         continue;

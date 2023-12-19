@@ -15,7 +15,7 @@ class ConstraintTable {
   vector<Constraint> constraint_table;
   SharedEnv& env;
 
-  ConstraintTable(SharedEnv& env, int num_of_agents) : env(env) { path_table.resize(num_of_agents); }
+  ConstraintTable(SharedEnv& env) : env(env) { path_table.resize(env.num_of_robots); }
   void insertPathToConstraint(int agent_id, Path path);
   bool obstacleConstrained(int agent_id, const Point& from_point, const Point& to_point, double radius) const;
   void getSafeIntervalTable(int agent_id, const Point& to_point, double radius, vector<Interval>& safe_intervals) const;
