@@ -72,40 +72,67 @@ bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, con
 
 void ConstraintTable::getSafeIntervalTable(int agent_id, const Point& to_point, double radius,
                                            vector<Interval>& safe_intervals) const {
-  // TODO: this function causes a bug
-  double earliest_safe_time = 0.0;
+  safe_intervals.emplace_back(0.0, numeric_limits<double>::max());
   for (auto occupied_agent_id = 0; occupied_agent_id < path_table.size(); ++occupied_agent_id) {
     if (occupied_agent_id == agent_id) continue;
     if (path_table[occupied_agent_id].empty()) continue;
     // vertex-edge conflict
+    bool is_safe = true;
+    double collision_start_time = 0.0;
     for (int i = 0; i < path_table[occupied_agent_id].size() - 1; ++i) {
       auto [prev_point, prev_time] = path_table[occupied_agent_id][i];
       auto [next_point, next_time] = path_table[occupied_agent_id][i + 1];
 
       // check if spatial constraint is satisfied
       if (calculateDistance(prev_point, to_point) >=
-          calculateDistance(prev_point, next_point) + env.radii[occupied_agent_id])
+          calculateDistance(prev_point, next_point) + radius + env.radii[occupied_agent_id])
         continue;
 
       vector<Point> interpolated_points;
       vector<double> interpolated_times;
       interpolatePointTime(agent_id, prev_point, next_point, prev_time, next_time, interpolated_points,
                            interpolated_times);
-      bool is_safe_interval = true;
       for (int j = 0; j < interpolated_points.size(); ++j) {
-        const double distance = calculateDistance(to_point, interpolated_points[j]);
-        if (distance < radius + env.radii[occupied_agent_id] && is_safe_interval) {
-          safe_intervals.emplace_back(earliest_safe_time, interpolated_times[j]);
-          is_safe_interval = false;
-        }
-        if (distance >= radius + env.radii[occupied_agent_id] && !is_safe_interval) {
-          earliest_safe_time = interpolated_times[j];
-          is_safe_interval = true;
+        const auto occupied_expand_time = interpolated_times[j] - prev_time;
+        const auto occupied_theta =
+            atan2(get<1>(next_point) - get<1>(prev_point), get<0>(next_point) - get<0>(prev_point));
+        const auto occupied_point = make_tuple(
+            get<0>(prev_point) + env.velocities[occupied_agent_id] * cos(occupied_theta) * occupied_expand_time,
+            get<1>(prev_point) + env.velocities[occupied_agent_id] * sin(occupied_theta) * occupied_expand_time);
+        if (calculateDistance(to_point, occupied_point) < radius + env.radii[occupied_agent_id] & is_safe) {
+          is_safe = false;
+          collision_start_time = interpolated_times[j];
+        } else if (calculateDistance(to_point, occupied_point) >= radius + env.radii[occupied_agent_id] & !is_safe) {
+          is_safe = true;
+          insertToSafeIntervalTable(safe_intervals, collision_start_time, interpolated_times[j]);
         }
       }
     }
+    if (!is_safe) {  // target conflict
+      insertToSafeIntervalTable(safe_intervals, collision_start_time, numeric_limits<double>::max());
+    }
   }
-  safe_intervals.emplace_back(earliest_safe_time, std::numeric_limits<double>::max());
+}
+
+void ConstraintTable::insertToSafeIntervalTable(vector<Interval>& safe_intervals, double t_min, double t_max) const {
+  assert(t_min >= 0.0 and t_min < t_max and !safe_intervals.empty());
+  for (int i = 0; i < safe_intervals.size(); ++i) {
+    if (t_min > get<1>(safe_intervals[i])) continue;
+    if (t_max < get<0>(safe_intervals[i])) break;
+    if (t_min <= get<0>(safe_intervals[i]) && t_max >= get<1>(safe_intervals[i])) {
+      safe_intervals.erase(safe_intervals.begin() + i);
+    }
+    if (t_min <= get<0>(safe_intervals[i]) && t_max < get<1>(safe_intervals[i])) {
+      get<0>(safe_intervals[i]) = t_max;
+    }
+    if (t_min > get<0>(safe_intervals[i]) && t_max >= get<1>(safe_intervals[i])) {
+      get<1>(safe_intervals[i]) = t_min;
+    }
+    if (t_min > get<0>(safe_intervals[i]) && t_max < get<1>(safe_intervals[i])) {
+      safe_intervals.emplace_back(t_max, get<1>(safe_intervals[i]));
+      get<1>(safe_intervals[i]) = t_min;
+    }
+  }
 }
 
 // other_point가 other_time에서 멈추어도 되는지..
@@ -144,7 +171,7 @@ void ConstraintTable::interpolatePoint(int agent_id, const Point& from_point, co
   const double theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
   const double expand_time = expand_distance / env.velocities[agent_id];
   const auto timestep = static_cast<int>(floor(expand_distance / env.velocities[agent_id])) + 1;
-  for (int time = 1; time < timestep; ++time) {
+  for (int time = 0; time < timestep; ++time) {
     Point interpoated_point = make_tuple(get<0>(from_point) + env.velocities[agent_id] * cos(theta) * time,
                                          get<1>(from_point) + env.velocities[agent_id] * sin(theta) * time);
     interpolated_points.emplace_back(interpoated_point);
@@ -172,7 +199,7 @@ void ConstraintTable::interpolatePointTime(int agent_id, const Point& from_point
   const double theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
   const double expand_time = expand_distance / env.velocities[agent_id];
   const auto timestep = static_cast<int>(floor(expand_distance / env.velocities[agent_id])) + 1;
-  for (int time = 1; time < timestep; ++time) {
+  for (int time = 0; time < timestep; ++time) {
     Point interpoated_point = make_tuple(get<0>(from_point) + env.velocities[agent_id] * cos(theta) * time,
                                          get<1>(from_point) + env.velocities[agent_id] * sin(theta) * time);
     interpolated_points.emplace_back(interpoated_point);

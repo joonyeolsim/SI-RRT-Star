@@ -22,6 +22,7 @@ class ConstraintTable {
   bool pathConstrained(int agent_id, const Point& from_point, const Point& to_point, double from_time, double to_time,
                        double radius) const;
   bool targetConstrained(const Point& other_point, double other_time, double other_radius) const;
+  void insertToSafeIntervalTable(vector<Interval>& safe_intervals, double t_min, double t_max) const;
   void interpolatePoint(int agent_id, const Point& from_point, const Point& to_point,
                         vector<Point>& interpoate_points) const;
   void interpolatePointTime(int agent_id, const Point& from_point, const Point& to_point, double from_time,
