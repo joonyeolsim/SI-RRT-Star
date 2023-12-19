@@ -106,11 +106,7 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
         return get<0>(interval) <= from_time && from_time < get<1>(interval);
       });
 
-      // get first element of it
-      const auto& from_safe_interval = *it;
-      assert(get<0>(from_safe_interval) <= from_time && from_time < get<1>(from_safe_interval));
-
-      if (get<1>(from_safe_interval) <= from_time) continue;
+      if (it == from_safe_intervals.end()) continue;
 
       // check move constraint
       if (constraint_table.pathConstrained(agent_id, from_node->point, to_point, from_node->earliest_arrival_times[i],
