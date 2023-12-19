@@ -125,7 +125,7 @@ Path SIRRT::updatePath(const shared_ptr<LLNode>& goal_node, const int interval_i
 
     const auto expand_time = calculateDistance(prev_node->point, curr_node->point) / env.velocities[agent_id];
     path.emplace_back(curr_node->point, curr_node->earliest_arrival_times[current_interval_index]);
-    if (abs(prev_time + expand_time - curr_time) > env.threshold) {
+    if (prev_time + expand_time + env.threshold < curr_time) {
       path.emplace_back(prev_node->point, curr_time - expand_time);
     }
     if (curr_node && !curr_node->parent_interval_indicies.empty()) {
