@@ -14,13 +14,13 @@ Path SIRRT::run() {
     if (new_node == nullptr) {
       continue;
     }
-    nodes.push_back(new_node);
 
     // check goal
     if (calculateDistance(new_node->point, goal_point) < env.threshold) {
       for (int i = 0; i < new_node->intervals.size(); ++i) {
         if (constraint_table.targetConstrained(new_node->point, get<0>(new_node->intervals[i]), env.radii[agent_id]))
           continue;
+        nodes.push_back(new_node);
         path = updatePath(new_node, i);
         assert(calculateDistance(get<0>(path.front()), start_point) < env.threshold);
         assert(calculateDistance(get<0>(path.back()), goal_point) < env.threshold);
@@ -38,6 +38,8 @@ Path SIRRT::run() {
         }
         return path;
       }
+    } else {
+      nodes.push_back(new_node);
     }
   }
 
@@ -103,7 +105,6 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
     return nullptr;
   }
   new_node->parent = from_node;
-  cout << "New safe interval size: " << new_node->intervals.size() << endl;
   return new_node;
 }
 
@@ -113,16 +114,26 @@ double get_earliest_arrival_time(const shared_ptr<LLNode>& node, const int inter
 
 Path SIRRT::updatePath(const shared_ptr<LLNode>& goal_node, const int interval_index) {
   Path path;
-  shared_ptr<LLNode> current_node = goal_node;
+  shared_ptr<LLNode> curr_node = goal_node;
   int current_interval_index = interval_index;
-  while (current_node) {
-    cout << current_node->earliest_arrival_times[current_interval_index] << endl;
-    path.emplace_back(current_node->point, current_node->earliest_arrival_times[current_interval_index]);
-    if (current_node && !current_node->parent_interval_indicies.empty()) {
-      current_interval_index = current_node->parent_interval_indicies[current_interval_index];
+  while (curr_node->parent != nullptr) {
+    const auto prev_node = curr_node->parent;
+    const auto prev_time =
+        get_earliest_arrival_time(prev_node, curr_node->parent_interval_indicies[current_interval_index]);
+    const auto curr_time = get_earliest_arrival_time(curr_node, current_interval_index);
+    assert(prev_time < curr_time);
+
+    const auto expand_time = calculateDistance(prev_node->point, curr_node->point) / env.velocities[agent_id];
+    path.emplace_back(curr_node->point, curr_node->earliest_arrival_times[current_interval_index]);
+    if (abs(prev_time + expand_time - curr_time) > env.threshold) {
+      path.emplace_back(prev_node->point, curr_time - expand_time);
     }
-    current_node = current_node->parent;
+    if (curr_node && !curr_node->parent_interval_indicies.empty()) {
+      current_interval_index = curr_node->parent_interval_indicies[current_interval_index];
+    }
+    curr_node = curr_node->parent;
   }
+  path.emplace_back(curr_node->point, curr_node->earliest_arrival_times[current_interval_index]);
   reverse(path.begin(), path.end());
 
   return path;
