@@ -100,13 +100,15 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
       if (upper_bound <= get<0>(safe_interval)) break;
 
       // check move constraint
-      if (constraint_table.pathConstrained(agent_id, from_node->point, to_point, from_node->earliest_arrival_times[i],
-                                           from_node->earliest_arrival_times[i] + expand_time, env.radii[agent_id]))
+      // TODO : from time, to time should be real time
+      const double to_time = max(get<0>(safe_interval), lower_bound);
+      const double from_time = to_time - expand_time;
+      if (constraint_table.pathConstrained(agent_id, from_node->point, to_point, from_time, to_time,
+                                           env.radii[agent_id]))
         continue;
-      new_node->earliest_arrival_times.emplace_back(max(get<0>(safe_interval), lower_bound));
-      assert(max(get<0>(safe_interval), lower_bound) < min(get<1>(safe_interval), upper_bound));
-      new_node->intervals.emplace_back(max(get<0>(safe_interval), lower_bound),
-                                       min(get<1>(safe_interval), upper_bound));
+      new_node->earliest_arrival_times.emplace_back(to_time);
+      assert(to_time < min(get<1>(safe_interval), upper_bound));
+      new_node->intervals.emplace_back(to_time, min(get<1>(safe_interval), upper_bound));
       new_node->parent_interval_indicies.emplace_back(i);
     }
   }
