@@ -93,7 +93,8 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
     assert(lower_bound > 0);
     assert(lower_bound < upper_bound);
     for (auto& safe_interval : safe_intervals) {
-      if (lower_bound > get<1>(safe_interval) || upper_bound <= get<0>(safe_interval)) continue;
+      if (lower_bound >= get<1>(safe_interval)) continue;
+      if (upper_bound <= get<0>(safe_interval)) break;
 
       // check wait constraint
       double from_time = get<0>(safe_interval) - expand_time;
