@@ -7,7 +7,7 @@ Path SIRRT::run() {
   constraint_table.getSafeIntervalTable(agent_id, start_point, env.radii[agent_id], safe_intervals);
   reservation_table.safe_interval_table[start_point] = safe_intervals;
   start_node->earliest_arrival_times = {0};
-  start_node->intervals = {{0, numeric_limits<double>::max()}};
+  start_node->intervals = {{0, min(numeric_limits<double>::max(), get<1>(safe_intervals[0]))}};
   nodes.push_back(start_node);
 
   while (env.iterations[agent_id]--) {
@@ -55,7 +55,7 @@ Point SIRRT::generateRandomPoint() {
   if (dis_100(env.gen) < env.goal_sample_rates[agent_id]) {
     return make_tuple(get<0>(goal_point), get<1>(goal_point));
   } else {
-    return make_tuple(dis_10(env.gen), dis_10(env.gen));
+    return make_tuple(dis_width(env.gen), dis_height(env.gen));
   }
 }
 
@@ -95,19 +95,6 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
     for (auto& safe_interval : safe_intervals) {
       if (lower_bound >= get<1>(safe_interval)) continue;
       if (upper_bound <= get<0>(safe_interval)) break;
-
-      // check wait constraint
-      double from_time = get<0>(safe_interval) - expand_time;
-      if (from_time < get<0>(from_node->intervals[i])) from_time = get<0>(from_node->intervals[i]);
-      assert(from_node->earliest_arrival_times[i] <= from_time);
-
-      const auto from_safe_intervals = reservation_table.safe_interval_table.at(from_node->point);
-      // find safe interval which contains from_time from safe_intervals
-      auto it = find_if(from_safe_intervals.begin(), from_safe_intervals.end(), [&](const Interval& interval) {
-        return get<0>(interval) <= from_time && from_time < get<1>(interval);
-      });
-
-      if (it == from_safe_intervals.end()) continue;
 
       // check move constraint
       if (constraint_table.pathConstrained(agent_id, from_node->point, to_point, from_node->earliest_arrival_times[i],

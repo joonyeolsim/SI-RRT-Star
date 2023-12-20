@@ -13,7 +13,8 @@
 
 class SIRRT {
  public:
-  std::uniform_real_distribution<> dis_10;
+  std::uniform_real_distribution<> dis_width;
+  std::uniform_real_distribution<> dis_height;
   std::uniform_real_distribution<> dis_100;
   vector<shared_ptr<LLNode>> nodes;
   Point start_point;
@@ -25,7 +26,8 @@ class SIRRT {
   ReservationTable& reservation_table;
 
   SIRRT(int agent_id, SharedEnv& env, ConstraintTable& constraint_table, ReservationTable& reservation_table)
-      : dis_10(0.0, 10.0),
+      : dis_width(0.0, env.width),
+        dis_height(0.0, env.height),
         dis_100(0.0, 100.0),
         env(env),
         constraint_table(constraint_table),
