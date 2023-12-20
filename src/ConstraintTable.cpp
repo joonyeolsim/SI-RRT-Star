@@ -44,9 +44,13 @@ bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, con
         const auto occupied_expand_time = interpolated_times[j] - prev_time;
         const auto occupied_theta =
             atan2(get<1>(next_point) - get<1>(prev_point), get<0>(next_point) - get<0>(prev_point));
-        const auto occupied_point = make_tuple(
-            get<0>(prev_point) + env.velocities[occupied_agent_id] * cos(occupied_theta) * occupied_expand_time,
-            get<1>(prev_point) + env.velocities[occupied_agent_id] * sin(occupied_theta) * occupied_expand_time);
+
+        auto occupied_point = prev_point;
+        if (occupied_theta != 0.0) {
+          occupied_point = make_tuple(
+              get<0>(prev_point) + env.velocities[occupied_agent_id] * cos(occupied_theta) * occupied_expand_time,
+              get<1>(prev_point) + env.velocities[occupied_agent_id] * sin(occupied_theta) * occupied_expand_time);
+        }
         if (calculateDistance(interpolated_points[j], occupied_point) < radius + env.radii[occupied_agent_id]) {
           return true;
         }
@@ -171,14 +175,20 @@ void ConstraintTable::interpolatePoint(int agent_id, const Point& from_point, co
   const double expand_time = expand_distance / env.velocities[agent_id];
   const auto timestep = static_cast<int>(floor(expand_distance / env.velocities[agent_id])) + 1;
   for (int time = 0; time < timestep; ++time) {
-    Point interpoated_point = make_tuple(get<0>(from_point) + env.velocities[agent_id] * cos(theta) * time,
-                                         get<1>(from_point) + env.velocities[agent_id] * sin(theta) * time);
+    Point interpoated_point = from_point;
+    if (theta != 0.0) {
+      interpoated_point = make_tuple(get<0>(from_point) + env.velocities[agent_id] * cos(theta) * time,
+                                     get<1>(from_point) + env.velocities[agent_id] * sin(theta) * time);
+    }
     interpolated_points.emplace_back(interpoated_point);
   }
   const double remain_time = fmod(expand_distance, env.velocities[agent_id]);
   if (remain_time > env.threshold) {
-    Point interpoated_point = make_tuple(get<0>(from_point) + env.velocities[agent_id] * cos(theta) * expand_time,
-                                         get<1>(from_point) + env.velocities[agent_id] * sin(theta) * expand_time);
+    Point interpoated_point = from_point;
+    if (theta != 0.0) {
+      interpoated_point = make_tuple(get<0>(from_point) + env.velocities[agent_id] * cos(theta) * expand_time,
+                                     get<1>(from_point) + env.velocities[agent_id] * sin(theta) * expand_time);
+    }
     interpolated_points.emplace_back(interpoated_point);
   }
 

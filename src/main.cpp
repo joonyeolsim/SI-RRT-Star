@@ -4,7 +4,7 @@
 #include "SharedEnv.h"
 
 int main() {
-  int num_of_agents = 100;
+  int num_of_agents = 50;
   int width = 32;
   int height = 32;
   vector<Point> start_points;
