@@ -16,16 +16,24 @@ with open(file_path, 'r') as file:
 # 데이터 파싱
 def parse_data(data):
     agents = {}
+    no_path_agents = []  # 경로가 없는 에이전트를 저장할 리스트
     for line in data:
         match = re.match(r'Agent (\d+):', line)
         if match:
             agent_id = int(match.group(1))
             points = re.findall(r'\(([^)]+)\)', line)
-            agents[agent_id] = [tuple(map(float, point.split(','))) for point in points]
-    return agents
+            if points:
+                agents[agent_id] = [tuple(map(float, point.split(','))) for point in points]
+            else:
+                no_path_agents.append(agent_id)  # 경로가 없으면 리스트에 추가
+    return agents, no_path_agents
 
 
-agents = parse_data(data)
+agents, no_path_agents = parse_data(data)
+
+# 경로가 없는 에이전트 출력
+print(f'Agents without a path: {no_path_agents}')
+print(f'Number of agents: {len(agents)}')
 
 
 # 경로 보간
@@ -52,7 +60,6 @@ def add_start_end_points(ax, agents):
     for agent_id, path in agents.items():
         # 시작점과 도착점 추가
         if not path:
-            print(f'Agent {agent_id} has no path')
             continue
         start_x, start_y, _ = path[0]
         end_x, end_y, _ = path[-1]
@@ -68,9 +75,11 @@ def add_start_end_points(ax, agents):
 
 def init():
     time_text.set_text('')
-    for agent_id, circle in circles.items():
-        circle.center = (0, 0)
-        ax.text(0, 0, str(agent_id), color='black', fontsize=8, ha='center', va='center')
+    for agent_id, path in agents.items():
+        if path:  # 경로가 있는 경우에만 초기화
+            circle = circles[agent_id]
+            circle.center = (0, 0)
+            ax.text(0, 0, str(agent_id), color='black', fontsize=8, ha='center', va='center')
     return [time_text] + list(circles.values())
 
 
@@ -80,9 +89,10 @@ def animate(frame):
     annotations = []
     for agent_id, path in agents.items():
         if not path:
-            continue
+            continue  # 경로가 없는 에이전트는 무시
         position = next(((x, y) for x, y, t in path if t >= time), path[-1][:2])
-        circles[agent_id].center = position
+        circle = circles[agent_id]
+        circle.center = position
         annotation = ax.text(position[0], position[1], str(agent_id), color='white', fontsize=8, ha='center',
                              va='center')
         annotations.append(annotation)
@@ -93,7 +103,7 @@ def animate(frame):
         for other_agent_id, other_circle in circles.items():
             if agent_id == other_agent_id:
                 continue
-            if np.linalg.norm(np.array(circle.center) - np.array(other_circle.center)) < 0.5 + 0.5:
+            if np.linalg.norm(np.array(circle.center) - np.array(other_circle.center)) < 0.5 * 0.9 + 0.5 * 0.9:
                 circle.set_facecolor('red')
                 print(f'Collision between agents {agent_id} and {other_agent_id} at time {time:.2f}s')
     return [time_text] + list(circles.values()) + annotations
@@ -106,7 +116,7 @@ ax.set_ylim(0, 32)
 add_start_end_points(ax, agents)  # 시작점과 도착점, 에이전트 번호 추가
 
 time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
-circles = {agent_id: Circle((0, 0), 0.5, fc='blue') for agent_id in agents.keys()}
+circles = {agent_id: Circle((0, 0), 0.5 * 0.9, fc='blue') for agent_id, path in agents.items() if path}
 for circle in circles.values():
     ax.add_patch(circle)
 
