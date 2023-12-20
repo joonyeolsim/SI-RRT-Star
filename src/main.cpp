@@ -4,7 +4,7 @@
 #include "SharedEnv.h"
 
 int main() {
-  int num_of_agents = 30;
+  int num_of_agents = 100;
   int width = 32;
   int height = 32;
   vector<Point> start_points;
@@ -17,7 +17,7 @@ int main() {
   vector<double> goal_sample_rates;
   for (int i = 0; i < num_of_agents; ++i) {
     radii.emplace_back(0.5);
-    max_expand_distances.emplace_back(0.5);
+    max_expand_distances.emplace_back(5.0);
     velocities.emplace_back(0.5);
     thresholds.emplace_back(0.01);
     iterations.emplace_back(1000);

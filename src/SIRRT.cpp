@@ -5,6 +5,7 @@ Path SIRRT::run() {
   const auto start_node = make_shared<LLNode>(start_point);
   vector<Interval> safe_intervals;
   constraint_table.getSafeIntervalTable(agent_id, start_point, env.radii[agent_id], safe_intervals);
+  assert(!safe_intervals.empty());
   reservation_table.safe_interval_table[start_point] = safe_intervals;
   start_node->earliest_arrival_times = {0};
   start_node->intervals = {{0, min(numeric_limits<double>::max(), get<1>(safe_intervals[0]))}};
@@ -86,6 +87,7 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
 
   vector<Interval> safe_intervals;
   constraint_table.getSafeIntervalTable(agent_id, to_point, env.radii[agent_id], safe_intervals);
+  if (safe_intervals.empty()) return nullptr;
   reservation_table.safe_interval_table[to_point] = safe_intervals;
   for (int i = 0; i < from_node->intervals.size(); ++i) {
     const double lower_bound = get<0>(from_node->intervals[i]) + expand_time;
@@ -100,7 +102,7 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
       if (constraint_table.pathConstrained(agent_id, from_node->point, to_point, from_node->earliest_arrival_times[i],
                                            from_node->earliest_arrival_times[i] + expand_time, env.radii[agent_id]))
         continue;
-      new_node->earliest_arrival_times.emplace_back(lower_bound);
+      new_node->earliest_arrival_times.emplace_back(max(get<0>(safe_interval), lower_bound));
       assert(max(get<0>(safe_interval), lower_bound) < min(get<1>(safe_interval), upper_bound));
       new_node->intervals.emplace_back(max(get<0>(safe_interval), lower_bound),
                                        min(get<1>(safe_interval), upper_bound));

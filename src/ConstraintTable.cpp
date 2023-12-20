@@ -94,24 +94,21 @@ void ConstraintTable::getSafeIntervalTable(int agent_id, const Point& to_point, 
       interpolatePointTime(occupied_agent_id, prev_point, next_point, prev_time, next_time, interpolated_points,
                            interpolated_times);
       for (int j = 0; j < interpolated_points.size(); ++j) {
-        const auto occupied_expand_time = interpolated_times[j] - prev_time;
-        const auto occupied_theta =
-            atan2(get<1>(next_point) - get<1>(prev_point), get<0>(next_point) - get<0>(prev_point));
-        const auto occupied_point = make_tuple(
-            get<0>(prev_point) + env.velocities[occupied_agent_id] * cos(occupied_theta) * occupied_expand_time,
-            get<1>(prev_point) + env.velocities[occupied_agent_id] * sin(occupied_theta) * occupied_expand_time);
-        if (calculateDistance(to_point, occupied_point) < radius + env.radii[occupied_agent_id] & is_safe) {
+        if (calculateDistance(to_point, interpolated_points[j]) < radius + env.radii[occupied_agent_id] & is_safe) {
           is_safe = false;
           collision_start_time = interpolated_times[j];
-        } else if (calculateDistance(to_point, occupied_point) >= radius + env.radii[occupied_agent_id] & !is_safe) {
+        } else if (calculateDistance(to_point, interpolated_points[j]) >= radius + env.radii[occupied_agent_id] &
+                   !is_safe) {
           is_safe = true;
           assert(collision_start_time < interpolated_times[j]);
           insertToSafeIntervalTable(safe_intervals, collision_start_time, interpolated_times[j]);
+          if (safe_intervals.empty()) return;
         }
       }
     }
     if (!is_safe) {  // target conflict
       insertToSafeIntervalTable(safe_intervals, collision_start_time, numeric_limits<double>::max());
+      if (safe_intervals.empty()) return;
     }
   }
 }
