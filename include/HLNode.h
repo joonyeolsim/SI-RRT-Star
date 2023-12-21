@@ -7,4 +7,11 @@
 
 #include "common.h"
 
+class HLNode {
+public:
+  Solution solution;
+  vector<Constraint> constraints;
+  double cost;
+};
+
 #endif  // HLNODE_H
