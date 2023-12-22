@@ -10,6 +10,7 @@
 class HLNode {
 public:
   Solution solution;
+  vector<Conflict> conflicts;
   vector<Constraint> constraints;
   double cost;
 };

@@ -33,8 +33,8 @@ class SICBS {
   ~SICBS() = default;
   Solution run();
   Solution getInitialSolution();
-  double calculateCost(const Solution& solution) const;
-  void findConflicts(const Solution& solution, vector<Conflict>& conflicts);
+  static double calculateCost(const Solution& solution);
+  void findConflicts(const Solution& solution, vector<Conflict>& conflicts) const;
 };
 
 #endif  // SICBS_H
