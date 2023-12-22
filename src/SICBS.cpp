@@ -58,6 +58,7 @@ double SICBS::calculateCost(const Solution& solution) {
 }
 
 void SICBS::findConflicts(const Solution& solution, vector<Conflict>& conflicts) const {
+  // TODO: bug should be fixed
   for (int agent1_id = 0; agent1_id < env.num_of_robots; ++agent1_id) {
     for (int agent2_id = agent1_id + 1; agent2_id < env.num_of_robots; ++agent2_id) {
       assert(agent1_id != agent2_id);
