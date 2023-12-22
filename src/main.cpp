@@ -32,13 +32,15 @@ int main() {
   ConstraintTable constraint_table(env);
   Solution soluiton;
   auto start = std::chrono::high_resolution_clock::now();
-  for (int agent_id = 0; agent_id < num_of_agents; ++agent_id) {
-    ReservationTable reservation_table(env);
-    SIRRT sirrt(agent_id, env, constraint_table, reservation_table);
-    auto path = sirrt.run();
-    constraint_table.insertPathToConstraint(agent_id, path);
-    soluiton.emplace_back(path);
-  }
+  SICBS sicbs(env, constraint_table);
+  soluiton = sicbs.run();
+  // for (int agent_id = 0; agent_id < num_of_agents; ++agent_id) {
+  //   ReservationTable reservation_table(env);
+  //   SIRRT sirrt(agent_id, env, constraint_table, reservation_table);
+  //   auto path = sirrt.run();
+  //   constraint_table.insertPathToConstraint(agent_id, path);
+  //   soluiton.emplace_back(path);
+  // }
   auto stop = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::ratio<1>> duration = stop - start;
   std::cout << "Time taken by function: " << duration.count() << " seconds" << std::endl;

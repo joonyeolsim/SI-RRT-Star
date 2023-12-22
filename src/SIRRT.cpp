@@ -2,11 +2,12 @@
 
 Path SIRRT::run() {
   release();
+  SafeIntervalTable safe_interval_table(env);
   const auto start_node = make_shared<LLNode>(start_point);
   vector<Interval> safe_intervals;
   constraint_table.getSafeIntervalTable(agent_id, start_point, env.radii[agent_id], safe_intervals);
   assert(!safe_intervals.empty());
-  reservation_table.safe_interval_table[start_point] = safe_intervals;
+  safe_interval_table.table[start_point] = safe_intervals;
   start_node->earliest_arrival_times = {0};
   start_node->intervals = {{0, min(numeric_limits<double>::max(), get<1>(safe_intervals[0]))}};
   nodes.push_back(start_node);
@@ -14,7 +15,7 @@ Path SIRRT::run() {
   while (env.iterations[agent_id]--) {
     Point random_point = generateRandomPoint();
     const shared_ptr<LLNode> nearest_node = getNearestNode(random_point);
-    auto new_node = steer(nearest_node, random_point);
+    auto new_node = steer(nearest_node, random_point, safe_interval_table);
     if (new_node == nullptr) {
       continue;
     }
@@ -74,7 +75,7 @@ shared_ptr<LLNode> SIRRT::getNearestNode(const Point& point) const {
   return nearest_node;
 }
 
-shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point& random_point) const {
+shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point& random_point, SafeIntervalTable& safe_interval_table) const {
   const double expand_distance =
       min(env.max_expand_distances[agent_id], calculateDistance(from_node->point, random_point));
   const double theta =
@@ -89,7 +90,7 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
   vector<Interval> safe_intervals;
   constraint_table.getSafeIntervalTable(agent_id, to_point, env.radii[agent_id], safe_intervals);
   if (safe_intervals.empty()) return nullptr;
-  reservation_table.safe_interval_table[to_point] = safe_intervals;
+  safe_interval_table.table[to_point] = safe_intervals;
   for (int i = 0; i < from_node->intervals.size(); ++i) {
     const double lower_bound = get<0>(from_node->intervals[i]) + expand_time;
     const double upper_bound = get<1>(from_node->intervals[i]) + expand_time;

@@ -26,12 +26,15 @@ class SICBS {
 
   SICBS(SharedEnv& env, ConstraintTable& constraint_table) : env(env), constraint_table(constraint_table) {
     low_level_planners.reserve(env.num_of_robots);
+    for (int i = 0; i < env.num_of_robots; i++) {
+      low_level_planners.emplace_back(i, env, constraint_table);
+    }
   }
   ~SICBS() = default;
   Solution run();
-  Solution getSolution(const shared_ptr<HLNode>& goal_node);
+  Solution getInitialSolution();
+  double calculateCost(const Solution& solution) const;
   void findConflicts(const Solution& solution, vector<Conflict>& conflicts);
-  void findConflict(const Solution& solution, Conflict& conflict);
 };
 
 #endif  // SICBS_H

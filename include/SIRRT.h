@@ -5,7 +5,7 @@
 #ifndef SIRRT_H
 #define SIRRT_H
 
-#include <ReservationTable.h>
+#include <SafeIntervalTable.h>
 
 #include "ConstraintTable.h"
 #include "LLNode.h"
@@ -23,9 +23,8 @@ class SIRRT {
   int agent_id;
   SharedEnv& env;
   ConstraintTable& constraint_table;
-  ReservationTable& reservation_table;
 
-  SIRRT(int agent_id, SharedEnv& env, ConstraintTable& constraint_table, ReservationTable& reservation_table)
+  SIRRT(int agent_id, SharedEnv& env, ConstraintTable& constraint_table)
       : dis_width(0.0, env.width),
         dis_height(0.0, env.height),
         dis_100(0.0, 100.0),
@@ -33,13 +32,12 @@ class SIRRT {
         constraint_table(constraint_table),
         agent_id(agent_id),
         start_point(env.start_points[agent_id]),
-        goal_point(env.goal_points[agent_id]),
-        reservation_table(reservation_table) {}
+        goal_point(env.goal_points[agent_id]) {}
   ~SIRRT() = default;
   Path run();
   Point generateRandomPoint();
   shared_ptr<LLNode> getNearestNode(const Point& point) const;
-  shared_ptr<LLNode> steer(const shared_ptr<LLNode>& from_node, const Point& random_point) const;
+  shared_ptr<LLNode> steer(const shared_ptr<LLNode>& from_node, const Point& random_point, SafeIntervalTable& safe_interval_table) const;
   Path updatePath(const shared_ptr<LLNode>& goal_node, const int interval_index);
   void release();
 };
