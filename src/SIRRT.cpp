@@ -107,6 +107,8 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
       if (constraint_table.pathConstrained(agent_id, from_node->point, to_point, from_time, to_time,
                                            env.radii[agent_id]))
         continue;
+      if (constraint_table.constrained(agent_id, from_node->point, to_point, from_time, to_time, env.radii[agent_id]))
+        continue;
       new_node->earliest_arrival_times.emplace_back(to_time);
       assert(to_time < min(get<1>(safe_interval), upper_bound));
       new_node->intervals.emplace_back(to_time, min(get<1>(safe_interval), upper_bound));

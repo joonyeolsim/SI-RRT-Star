@@ -13,7 +13,7 @@
 #include <SIRRT.h>
 
 struct compare_function {
-  bool operator()(const HLNode& a, const HLNode& b) const { return a.cost > b.cost; }
+  bool operator()(const HLNode& a, const HLNode& b) const { return a.conflicts.size() > b.conflicts.size(); }
 };
 
 class SICBS {
