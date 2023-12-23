@@ -42,8 +42,9 @@ int main() {
   //   soluiton.emplace_back(path);
   // }
   auto stop = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double, std::ratio<1>> duration = stop - start;
-  std::cout << "Time taken by function: " << duration.count() << " seconds" << std::endl;
+  chrono::duration<double, std::ratio<1>> duration = stop - start;
+  cout << "Time taken by function: " << duration.count() << " seconds" << endl;
+  cout << "solution cost: " << sicbs.sum_of_costs << endl;
   saveSolution(soluiton, "../solution.txt");
   return 0;
 }

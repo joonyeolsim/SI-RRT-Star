@@ -5,15 +5,26 @@
 #ifndef SICBS_H
 #define SICBS_H
 
+#include <SIRRT.h>
+
 #include "ConstraintTable.h"
 #include "HLNode.h"
 #include "SharedEnv.h"
 #include "common.h"
 
-#include <SIRRT.h>
-
 struct compare_function {
-  bool operator()(const HLNode& a, const HLNode& b) const { return a.conflicts.size() > b.conflicts.size(); }
+  // bool operator()(const HLNode& a, const HLNode& b) const {
+  //   if (a.cost == b.cost) {
+  //     return a.conflicts.size() > b.conflicts.size();
+  //   }
+  //   return a.cost > b.cost;
+  // }
+  bool operator()(const HLNode& a, const HLNode& b) const {
+    if (a.conflicts.size() == b.conflicts.size()) {
+      return a.cost > b.cost;
+    }
+    return a.conflicts.size() > b.conflicts.size();
+  }
 };
 
 class SICBS {
@@ -23,6 +34,8 @@ class SICBS {
   SharedEnv& env;
   ConstraintTable& constraint_table;
   vector<SIRRT> low_level_planners;
+  double sum_of_costs = 0.0;
+  double makespan = 0.0;
 
   SICBS(SharedEnv& env, ConstraintTable& constraint_table) : env(env), constraint_table(constraint_table) {
     low_level_planners.reserve(env.num_of_robots);

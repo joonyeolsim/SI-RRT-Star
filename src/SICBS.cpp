@@ -13,6 +13,7 @@ Solution SICBS::run() {
     open_list.pop();
 
     if (curr_node.conflicts.empty()) {
+      sum_of_costs = curr_node.cost;
       return curr_node.solution;
     }
 
@@ -78,10 +79,10 @@ void SICBS::findConflicts(const Solution& solution, vector<Conflict>& conflicts)
       bool is_safe = true;
       double collision_start_time = 0.0;
 
-      const auto times = static_cast<int>(floor(max_path_time / env.velocities[agent1_id])) + 1;
-
-      for (int time = 0; time < times; ++time) {
+      double time = 0.0;
+      while (time < max_path_time) {
         // update prev_point1, next_point1, prev_point2, next_point2
+        // TODO : BUG HERE
         if (time >= next_time1) {
           index1++;
           prev_point1 = get<0>(solution[agent1_id][min(static_cast<int>(solution[agent1_id].size()) - 1, index1)]);
@@ -132,10 +133,11 @@ void SICBS::findConflicts(const Solution& solution, vector<Conflict>& conflicts)
           conflicts.emplace_back(agent1_id, agent2_id, make_tuple(partial_path1, partial_path2));
           assert(collision_start_time < time);
         }
+        time += env.velocities[agent1_id];
       }
       if (!is_safe) {
         conflicts.emplace_back(agent1_id, agent2_id, make_tuple(partial_path1, partial_path2));
-        assert(collision_start_time < times);
+        assert(collision_start_time < time);
       }
     }
   }
