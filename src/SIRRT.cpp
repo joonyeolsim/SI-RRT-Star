@@ -38,7 +38,7 @@ Path SIRRT::run() {
         }
         cout << endl;
         // assert velocity always be 1.0m/s
-        for (int i = 0; i < path.size() - 1; ++i) {
+        for (int j = 0; j < path.size() - 1; ++j) {
           const double distance = calculateDistance(get<0>(path[i]), get<0>(path[i + 1]));
           const double time_diff = get<1>(path[i + 1]) - get<1>(path[i]);
           assert(distance / time_diff < env.velocities[agent_id] + env.threshold);

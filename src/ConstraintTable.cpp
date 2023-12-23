@@ -79,7 +79,7 @@ bool ConstraintTable::constrained(int agent_id, const Point& from_point, const P
                                   double to_time, double radius) const {
   assert(from_time < to_time);
   // vertex-edge conflict
-  for (auto [constrained_radius, constrained_path] : constraint_table) {
+  for (auto [constrained_radius, constrained_path] : constraint_table[agent_id]) {
     for (auto [constrained_point, constrained_time] : constrained_path) {
       // check if temporal constraint is satisfied
       // from_time < occupied_time <= to_time
@@ -103,10 +103,9 @@ bool ConstraintTable::constrained(int agent_id, const Point& from_point, const P
   return false;
 }
 
-void ConstraintTable::updateConstraints(const vector<Constraint>& constraints) {
-  constraint_table.clear();
+void ConstraintTable::updateConstraints(const int agent_id, const vector<Constraint>& constraints) {
   for (const auto& constraint : constraints) {
-    constraint_table.emplace_back(constraint);
+    constraint_table[agent_id].emplace_back(constraint);
   }
 }
 
@@ -156,7 +155,7 @@ void ConstraintTable::getSafeIntervalTableConstraint(int agent_id, const Point& 
                                                      vector<Interval>& safe_intervals) const {
   // TODO: to be implemented
   safe_intervals.emplace_back(0.0, numeric_limits<double>::max());
-  for (auto [constrained_radius, constrained_path] : constraint_table) {
+  for (auto [constrained_radius, constrained_path] : constraint_table[agent_id]) {
     bool is_safe = true;
     double collision_start_time = 0.0;
 

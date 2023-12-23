@@ -8,10 +8,10 @@
 #include "common.h"
 
 class HLNode {
-public:
+ public:
   Solution solution;
   vector<Conflict> conflicts;
-  vector<Constraint> constraints;
+  vector<vector<Constraint>> constraint_table;
   double cost;
 };
 
