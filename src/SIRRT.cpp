@@ -5,7 +5,7 @@ Path SIRRT::run() {
   SafeIntervalTable safe_interval_table(env);
   const auto start_node = make_shared<LLNode>(start_point);
   vector<Interval> safe_intervals;
-  constraint_table.getSafeIntervalTable(agent_id, start_point, env.radii[agent_id], safe_intervals);
+  constraint_table.getSafeIntervalTableConstraint(agent_id, start_point, env.radii[agent_id], safe_intervals);
   assert(!safe_intervals.empty());
   safe_interval_table.table[start_point] = safe_intervals;
   start_node->earliest_arrival_times = {0};
@@ -90,7 +90,7 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
   if (constraint_table.obstacleConstrained(agent_id, from_node->point, to_point, env.radii[agent_id])) return nullptr;
 
   vector<Interval> safe_intervals;
-  constraint_table.getSafeIntervalTable(agent_id, to_point, env.radii[agent_id], safe_intervals);
+  constraint_table.getSafeIntervalTableConstraint(agent_id, to_point, env.radii[agent_id], safe_intervals);
   if (safe_intervals.empty()) return nullptr;
   safe_interval_table.table[to_point] = safe_intervals;
   for (int i = 0; i < from_node->intervals.size(); ++i) {
@@ -106,9 +106,6 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
       // TODO : from time, to time should be real time
       const double to_time = max(get<0>(safe_interval), lower_bound);
       const double from_time = to_time - expand_time;
-      if (constraint_table.pathConstrained(agent_id, from_node->point, to_point, from_time, to_time,
-                                           env.radii[agent_id]))
-        continue;
       if (constraint_table.constrained(agent_id, from_node->point, to_point, from_time, to_time, env.radii[agent_id]))
         continue;
       new_node->earliest_arrival_times.emplace_back(to_time);

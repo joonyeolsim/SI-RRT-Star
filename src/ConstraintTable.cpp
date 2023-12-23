@@ -78,7 +78,6 @@ bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, con
 bool ConstraintTable::constrained(int agent_id, const Point& from_point, const Point& to_point, double from_time,
                                   double to_time, double radius) const {
   assert(from_time < to_time);
-  const double expand_distance = calculateDistance(from_point, to_point);
   // vertex-edge conflict
   for (auto [constrained_radius, constrained_path] : constraint_table) {
     for (auto [constrained_point, constrained_time] : constrained_path) {
@@ -111,8 +110,8 @@ void ConstraintTable::updateConstraints(const vector<Constraint>& constraints) {
   }
 }
 
-void ConstraintTable::getSafeIntervalTable(int agent_id, const Point& to_point, double radius,
-                                           vector<Interval>& safe_intervals) const {
+void ConstraintTable::getSafeIntervalTablePath(int agent_id, const Point& to_point, double radius,
+                                               vector<Interval>& safe_intervals) const {
   safe_intervals.emplace_back(0.0, numeric_limits<double>::max());
   for (auto occupied_agent_id = 0; occupied_agent_id < path_table.size(); ++occupied_agent_id) {
     if (occupied_agent_id == agent_id) continue;
@@ -144,6 +143,32 @@ void ConstraintTable::getSafeIntervalTable(int agent_id, const Point& to_point, 
           insertToSafeIntervalTable(safe_intervals, collision_start_time, interpolated_times[j]);
           if (safe_intervals.empty()) return;
         }
+      }
+    }
+    if (!is_safe) {  // target conflict
+      insertToSafeIntervalTable(safe_intervals, collision_start_time, numeric_limits<double>::max());
+      if (safe_intervals.empty()) return;
+    }
+  }
+}
+
+void ConstraintTable::getSafeIntervalTableConstraint(int agent_id, const Point& to_point, double radius,
+                                                     vector<Interval>& safe_intervals) const {
+  // TODO: to be implemented
+  safe_intervals.emplace_back(0.0, numeric_limits<double>::max());
+  for (auto [constrained_radius, constrained_path] : constraint_table) {
+    bool is_safe = true;
+    double collision_start_time = 0.0;
+
+    for (auto [constrained_point, constrained_time] : constrained_path) {
+      if (calculateDistance(constrained_point, to_point) < radius + constrained_radius & is_safe) {
+        is_safe = false;
+        collision_start_time = constrained_time;
+      } else if (calculateDistance(constrained_point, to_point) >= radius + constrained_radius & !is_safe) {
+        is_safe = true;
+        assert(collision_start_time < constrained_time);
+        insertToSafeIntervalTable(safe_intervals, collision_start_time, constrained_time);
+        if (safe_intervals.empty()) return;
       }
     }
     if (!is_safe) {  // target conflict
