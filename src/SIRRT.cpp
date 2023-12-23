@@ -12,7 +12,8 @@ Path SIRRT::run() {
   start_node->intervals = {{0, min(numeric_limits<double>::max(), get<1>(safe_intervals[0]))}};
   nodes.push_back(start_node);
 
-  while (env.iterations[agent_id]--) {
+  int iteration = env.iterations[agent_id];
+  while (iteration--) {
     Point random_point = generateRandomPoint();
     const shared_ptr<LLNode> nearest_node = getNearestNode(random_point);
     auto new_node = steer(nearest_node, random_point, safe_interval_table);
@@ -75,7 +76,8 @@ shared_ptr<LLNode> SIRRT::getNearestNode(const Point& point) const {
   return nearest_node;
 }
 
-shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point& random_point, SafeIntervalTable& safe_interval_table) const {
+shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point& random_point,
+                                SafeIntervalTable& safe_interval_table) const {
   const double expand_distance =
       min(env.max_expand_distances[agent_id], calculateDistance(from_node->point, random_point));
   const double theta =
