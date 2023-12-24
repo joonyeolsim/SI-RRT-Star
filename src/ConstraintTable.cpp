@@ -1,7 +1,3 @@
-//
-// Created by joonyeol on 23. 12. 8.
-//
-
 #include "ConstraintTable.h"
 
 void ConstraintTable::insertPathToConstraint(int agent_id, Path path) { path_table[agent_id] = path; }
@@ -18,6 +14,7 @@ bool ConstraintTable::obstacleConstrained(int agent_id, const Point& from_point,
   return false;
 }
 
+// THIS FUNCTION IS FOR PRIORITIZED PLANNING
 bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, const Point& to_point, double from_time,
                                       double to_time, double radius) const {
   assert(from_time < to_time);
@@ -82,9 +79,7 @@ bool ConstraintTable::constrained(int agent_id, const Point& from_point, const P
   for (auto [constrained_radius, constrained_path] : constraint_table[agent_id]) {
     for (auto [constrained_point, constrained_time] : constrained_path) {
       // check if temporal constraint is satisfied
-      // from_time < occupied_time <= to_time
       if (constrained_time > to_time || constrained_time <= from_time) continue;
-      // TODO: check if spatial constraint is satisfied
 
       const auto occupied_expand_time = constrained_time - from_time;
       const auto occupied_theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
@@ -104,11 +99,13 @@ bool ConstraintTable::constrained(int agent_id, const Point& from_point, const P
 }
 
 void ConstraintTable::updateConstraints(const int agent_id, const vector<Constraint>& constraints) {
+  constraint_table[agent_id].clear();
   for (const auto& constraint : constraints) {
     constraint_table[agent_id].emplace_back(constraint);
   }
 }
 
+// THIS FUNCTION IS FOR PRIORITIZED PLANNING
 void ConstraintTable::getSafeIntervalTablePath(int agent_id, const Point& to_point, double radius,
                                                vector<Interval>& safe_intervals) const {
   safe_intervals.emplace_back(0.0, numeric_limits<double>::max());
@@ -153,7 +150,7 @@ void ConstraintTable::getSafeIntervalTablePath(int agent_id, const Point& to_poi
 
 void ConstraintTable::getSafeIntervalTableConstraint(int agent_id, const Point& to_point, double radius,
                                                      vector<Interval>& safe_intervals) const {
-  // TODO: to be implemented
+  assert(safe_intervals.empty());
   safe_intervals.emplace_back(0.0, numeric_limits<double>::max());
   for (auto [constrained_radius, constrained_path] : constraint_table[agent_id]) {
     bool is_safe = true;
@@ -167,17 +164,18 @@ void ConstraintTable::getSafeIntervalTableConstraint(int agent_id, const Point& 
         is_safe = true;
         assert(collision_start_time < constrained_time);
         insertToSafeIntervalTable(safe_intervals, collision_start_time, constrained_time);
-        if (safe_intervals.empty()) return;
+        assert(!safe_intervals.empty());
       }
     }
-    if (!is_safe) {  // target conflict
-      insertToSafeIntervalTable(safe_intervals, collision_start_time, numeric_limits<double>::max());
-      if (safe_intervals.empty()) return;
+    if (!is_safe) {
+      // TODO : check if 1.0 is correct
+      insertToSafeIntervalTable(safe_intervals, collision_start_time, get<1>(constrained_path.back()) + 1.0);
+      assert(!safe_intervals.empty());
     }
   }
 }
 
-void ConstraintTable::insertToSafeIntervalTable(vector<Interval>& safe_intervals, double t_min, double t_max) const {
+void ConstraintTable::insertToSafeIntervalTable(vector<Interval>& safe_intervals, double t_min, double t_max) {
   assert(t_min >= 0.0 and t_min < t_max and !safe_intervals.empty());
   for (int i = 0; i < safe_intervals.size(); ++i) {
     if (t_min > get<1>(safe_intervals[i])) continue;
@@ -199,6 +197,7 @@ void ConstraintTable::insertToSafeIntervalTable(vector<Interval>& safe_intervals
 }
 
 // other_point가 other_time에서 멈추어도 되는지..
+// THIS FUNCTION IS FOR PRIORITIZED PLANNING
 bool ConstraintTable::targetConstrained(const Point& other_point, double other_time, double other_radius) const {
   for (auto occupied_agent_id = 0; occupied_agent_id < path_table.size(); ++occupied_agent_id) {
     if (path_table[occupied_agent_id].empty()) continue;
@@ -233,7 +232,7 @@ void ConstraintTable::interpolatePoint(int agent_id, const Point& from_point, co
   const double expand_distance = calculateDistance(from_point, to_point);
   const double theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
   const double expand_time = expand_distance / env.velocities[agent_id];
-  const auto timesteps = static_cast<int>(floor(expand_distance / env.velocities[agent_id])) + 1;
+  const auto timesteps = static_cast<int>(floor(expand_distance / env.velocities[agent_id]));
   for (int timestep = 0; timestep < timesteps; ++timestep) {
     Point interpoated_point = from_point;
     if (theta != 0.0) {
@@ -256,6 +255,7 @@ void ConstraintTable::interpolatePoint(int agent_id, const Point& from_point, co
     interpolated_points.emplace_back(from_point);
   }
 
+  assert(!interpolated_points.empty());
   assert(calculateDistance(interpolated_points.back(), from_point) <
          env.max_expand_distances[agent_id] + env.threshold);
   assert(calculateDistance(interpolated_points.front(), to_point) < env.max_expand_distances[agent_id] + env.threshold);
@@ -268,7 +268,7 @@ void ConstraintTable::interpolatePointTime(int agent_id, const Point& from_point
   const double expand_distance = calculateDistance(from_point, to_point);
   const double theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
   const double expand_time = expand_distance / env.velocities[agent_id];
-  const auto timesteps = static_cast<int>(floor(expand_distance / env.velocities[agent_id])) + 1;
+  const auto timesteps = static_cast<int>(floor(expand_distance / env.velocities[agent_id]));
   for (int timestep = 0; timestep < timesteps; ++timestep) {
     Point interpoated_point = make_tuple(get<0>(from_point) + env.velocities[agent_id] * cos(theta) * timestep,
                                          get<1>(from_point) + env.velocities[agent_id] * sin(theta) * timestep);
@@ -283,10 +283,8 @@ void ConstraintTable::interpolatePointTime(int agent_id, const Point& from_point
     interpoated_times.emplace_back(to_time);
   }
 
-  if (interpolated_points.empty()) {
-    interpolated_points.emplace_back(from_point);
-    interpoated_times.emplace_back(from_time);
-  }
+  assert(!interpolated_points.empty());
+  assert(interpolated_points.size() == interpoated_times.size());
   assert(calculateDistance(interpolated_points.back(), from_point) <
          env.max_expand_distances[agent_id] + env.threshold);
   assert(calculateDistance(interpolated_points.front(), to_point) < env.max_expand_distances[agent_id] + env.threshold);

@@ -26,9 +26,9 @@ using namespace std;
 
 typedef tuple<double, double> Point;
 typedef vector<tuple<Point, double>> Path;
-typedef tuple<double, double> Interval;           // (from_time, to_time)
-typedef tuple<int, int, tuple<Path, Path>> Conflict;       // (agent1, agent2, (partial_path1, partial_path2)
-typedef tuple<double, Path> Constraint;  // (occupied_radius, occupied_partial_path)
+typedef tuple<double, double> Interval;               // (from_time, to_time)
+typedef tuple<int, int, tuple<Path, Path>> Conflict;  // (agent1, agent2, (trajectory1, trajectory2))
+typedef tuple<double, Path> Constraint;               // (occupied_radius, occupied_trajectory)
 typedef vector<Path> Solution;
 
 void savePath(const Path& path, const string& filename);

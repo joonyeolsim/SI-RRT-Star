@@ -24,9 +24,6 @@ Path SIRRT::run() {
     // check goal
     if (calculateDistance(new_node->point, goal_point) < env.threshold) {
       for (int i = 0; i < new_node->intervals.size(); ++i) {
-        if (constraint_table.targetConstrained(new_node->point, new_node->earliest_arrival_times[i],
-                                               env.radii[agent_id]))
-          continue;
         nodes.push_back(new_node);
         path = updatePath(new_node, i);
         assert(calculateDistance(get<0>(path.front()), start_point) < env.threshold);
