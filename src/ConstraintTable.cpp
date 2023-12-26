@@ -198,7 +198,7 @@ void ConstraintTable::insertToSafeIntervalTable(vector<Interval>& safe_intervals
 
 // other_point가 other_time에서 멈추어도 되는지..
 // THIS FUNCTION IS FOR PRIORITIZED PLANNING
-bool ConstraintTable::targetConstrained(const Point& other_point, double other_time, double other_radius) const {
+bool ConstraintTable::targetConstrainedPath(const Point& other_point, double other_time, double other_radius) const {
   for (auto occupied_agent_id = 0; occupied_agent_id < path_table.size(); ++occupied_agent_id) {
     if (path_table[occupied_agent_id].empty()) continue;
     // vertex-edge conflict
@@ -221,6 +221,22 @@ bool ConstraintTable::targetConstrained(const Point& other_point, double other_t
         if (calculateDistance(interpolated_points[j], other_point) < other_radius + env.radii[occupied_agent_id]) {
           return true;
         }
+      }
+    }
+  }
+  return false;
+}
+
+// other_point가 other_time에서 멈추어도 되는지..
+bool ConstraintTable::targetConstrained(int agent_id, const Point& other_point, double other_time,
+                                        double other_radius) const {
+  // vertex-edge conflict
+  for (auto [constrained_radius, constrained_path] : constraint_table[agent_id]) {
+    for (auto [constrained_point, constrained_time] : constrained_path) {
+      // check if temporal constraint is satisfied
+      if (other_time > constrained_time) continue;
+      if (calculateDistance(constrained_point, other_point) < other_radius + constrained_radius) {
+        return true;
       }
     }
   }
