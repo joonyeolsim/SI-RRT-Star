@@ -32,11 +32,11 @@ Path SIRRT::run() {
         assert(calculateDistance(get<0>(path.front()), start_point) < env.threshold);
         assert(calculateDistance(get<0>(path.back()), goal_point) < env.threshold);
         // print path
-        cout << "path" << agent_id << ": ";
-        for (const auto& state : path) {
-          cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
-        }
-        cout << endl;
+        // cout << "path" << agent_id << ": ";
+        // for (const auto& state : path) {
+        //   cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
+        // }
+        // cout << endl;
         // assert velocity always be 1.0m/s
         for (int j = 0; j < path.size() - 1; ++j) {
           const double distance = calculateDistance(get<0>(path[i]), get<0>(path[i + 1]));

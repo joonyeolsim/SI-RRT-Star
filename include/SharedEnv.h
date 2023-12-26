@@ -76,7 +76,7 @@ class SharedEnv {
 
   bool occupied(const Point& other_point, const double other_radius, const vector<Point>& other_points) const {
     for (int agent_id = 0; agent_id < other_points.size(); ++agent_id) {
-      if (calculateDistance(other_point, other_points[agent_id]) < radii[agent_id] + other_radius) {
+      if (calculateDistance(other_point, other_points[agent_id]) < (radii[agent_id] + other_radius) * 2) {
         return true;
       }
     }
