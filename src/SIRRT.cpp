@@ -31,12 +31,6 @@ Path SIRRT::run() {
         path = updatePath(new_node, i);
         assert(calculateDistance(get<0>(path.front()), start_point) < env.threshold);
         assert(calculateDistance(get<0>(path.back()), goal_point) < env.threshold);
-        // print path
-        // cout << "path" << agent_id << ": ";
-        // for (const auto& state : path) {
-        //   cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
-        // }
-        // cout << endl;
         // assert velocity always be 1.0m/s
         for (int j = 0; j < path.size() - 1; ++j) {
           const double distance = calculateDistance(get<0>(path[i]), get<0>(path[i + 1]));
@@ -125,7 +119,7 @@ double get_earliest_arrival_time(const shared_ptr<LLNode>& node, const int inter
   return node->earliest_arrival_times[interval_index];
 }
 
-Path SIRRT::updatePath(const shared_ptr<LLNode>& goal_node, const int interval_index) {
+Path SIRRT::updatePath(const shared_ptr<LLNode>& goal_node, const int interval_index) const {
   Path path;
   shared_ptr<LLNode> curr_node = goal_node;
   int current_interval_index = interval_index;
