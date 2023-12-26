@@ -40,6 +40,11 @@ class SIRRT {
   shared_ptr<LLNode> steer(const shared_ptr<LLNode>& from_node, const Point& random_point,
                            SafeIntervalTable& safe_interval_table) const;
   Path updatePath(const shared_ptr<LLNode>& goal_node, const int interval_index) const;
+  void getNeighbors(const shared_ptr<LLNode>& new_node, vector<shared_ptr<LLNode>>& neighbors) const;
+  void chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
+                    SafeIntervalTable& safe_interval_table);
+  void rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
+              SafeIntervalTable& safe_interval_table);
   void release();
 };
 
