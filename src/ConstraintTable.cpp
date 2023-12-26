@@ -163,14 +163,13 @@ void ConstraintTable::getSafeIntervalTableConstraint(int agent_id, const Point& 
       } else if (calculateDistance(constrained_point, to_point) >= radius + constrained_radius & !is_safe) {
         is_safe = true;
         assert(collision_start_time < constrained_time);
-        insertToSafeIntervalTable(safe_intervals, collision_start_time, constrained_time + env.velocities[agent_id]);
+        insertToSafeIntervalTable(safe_intervals, collision_start_time, constrained_time + 1.0);
         assert(!safe_intervals.empty());
       }
     }
     if (!is_safe) {
       // TODO : check if 1.0 is correct
-      insertToSafeIntervalTable(safe_intervals, collision_start_time,
-                                get<1>(constrained_path.back()) + 1.0);
+      insertToSafeIntervalTable(safe_intervals, collision_start_time, get<1>(constrained_path.back()) + 1.0);
       assert(!safe_intervals.empty());
     }
   }
