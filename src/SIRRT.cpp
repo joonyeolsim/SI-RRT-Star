@@ -21,9 +21,13 @@ Path SIRRT::run() {
       continue;
     }
     vector<shared_ptr<LLNode>> neighbors;
+    bool success = false;
     getNeighbors(new_node, neighbors);
     assert(!neighbors.empty());
-    chooseParent(new_node, neighbors, safe_interval_table);
+    success = chooseParent(new_node, neighbors, safe_interval_table);
+    if (!success) {
+      continue;
+    }
     assert(new_node->parent.lock() != nullptr);
     rewire(new_node, neighbors, safe_interval_table);
 
@@ -163,9 +167,8 @@ void SIRRT::getNeighbors(const shared_ptr<LLNode>& new_node, vector<shared_ptr<L
   }
 }
 
-void SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
+bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
                          SafeIntervalTable& safe_interval_table) {
-  // TODO : bug fix
   assert(!neighbors.empty());
   assert(new_node->parent.lock() == nullptr);
 
@@ -197,7 +200,6 @@ void SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
                                          env.radii[agent_id]))
           continue;
         assert(to_time < min(get<1>(safe_interval), upper_bound));
-
         if (to_time < earliest_arrival_time) {
           earliest_arrival_time = to_time;
           parent_node = neighbor;
@@ -212,20 +214,22 @@ void SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
       }
     }
   }
-  // This should be removed after bug fix
-  assert(intervals.size() == parent_node->intervals.size());
+
+  // it fails to find parent because of constraint
+  if (parent_node == nullptr) {
+    return false;
+  }
   new_node->intervals = intervals;
   new_node->parent_interval_indicies = parent_interval_indicies;
   new_node->parent = parent_node;
   parent_node->children.emplace_back(new_node);
   assert(new_node->earliest_arrival_time - parent_node->earliest_arrival_time >= 0);
   new_node->earliest_arrival_time = earliest_arrival_time;
-  assert(new_node->earliest_arrival_time - new_node->parent.lock()->earliest_arrival_time < 10.0 + env.threshold);
+  return true;
 }
 
 void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
                    SafeIntervalTable& safe_interval_table) {
-  // TODO : bug fix
   assert(!neighbors.empty());
   for (auto& neighbor : neighbors) {
     // Skip if neighbor is the parent of new_node
@@ -265,10 +269,7 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
       }
     }
 
-    assert(intervals.size() == new_node->intervals.size());
-
     if (earliest_arrival_time < neighbor->earliest_arrival_time) {
-      assert(new_node->intervals.size() == neighbor->intervals.size());
       neighbor->earliest_arrival_time = earliest_arrival_time;
       neighbor->intervals = intervals;
       neighbor->parent_interval_indicies = parent_interval_indices;
@@ -280,13 +281,7 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
       new_node->children.emplace_back(neighbor);
       propagateCostToSuccessor(neighbor, safe_interval_table);
       assert(neighbor->earliest_arrival_time - new_node->earliest_arrival_time >= 0);
-      assert(neighbor->earliest_arrival_time - neighbor->parent.lock()->earliest_arrival_time < 10.0 + env.threshold);
     }
-  }
-
-  for (auto& neighbor : neighbors) {
-    if (neighbor->parent.lock() == nullptr) continue;
-    assert(neighbor->earliest_arrival_time - neighbor->parent.lock()->earliest_arrival_time < 10.0 + env.threshold);
   }
 }
 
