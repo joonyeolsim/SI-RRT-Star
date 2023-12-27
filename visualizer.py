@@ -117,8 +117,11 @@ add_start_end_points(ax, agents)  # 시작점과 도착점, 에이전트 번호 
 
 time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
 circles = {agent_id: Circle((0, 0), 0.5 * 0.9, fc='blue') for agent_id, path in agents.items() if path}
+obstacles = [Circle((15, 15), 2, fc='black')]
 for circle in circles.values():
     ax.add_patch(circle)
+for obstacle in obstacles:
+    ax.add_patch(obstacle)
 
 ani = animation.FuncAnimation(fig, animate, frames=int(total_time * sample), init_func=init, blit=True, interval=15)
 
