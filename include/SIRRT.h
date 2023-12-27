@@ -45,7 +45,7 @@ class SIRRT {
                     SafeIntervalTable& safe_interval_table);
   void rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
               SafeIntervalTable& safe_interval_table);
-  void propagateCostToSuccessor(const shared_ptr<LLNode>& node, double reduce_time);
+  void propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeIntervalTable& safe_interval_table);
   void release();
 };
 
