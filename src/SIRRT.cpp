@@ -25,12 +25,7 @@ Path SIRRT::run() {
     assert(!neighbors.empty());
     chooseParent(new_node, neighbors, safe_interval_table);
     assert(new_node->parent.lock() != nullptr);
-    assert(new_node->earliest_arrival_time - new_node->parent.lock()->earliest_arrival_time < 10.0 + env.threshold);
-    // rewire(new_node, neighbors, safe_interval_table);
-    for (auto& neighbor : neighbors) {
-      if (neighbor->parent.lock() == nullptr) continue;
-      assert(neighbor->earliest_arrival_time - neighbor->parent.lock()->earliest_arrival_time < 10.0 + env.threshold);
-    }
+    rewire(new_node, neighbors, safe_interval_table);
 
     // check goal
     if (calculateDistance(new_node->point, goal_point) < env.threshold) {
@@ -114,13 +109,13 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
   //     if (constraint_table.constrained(agent_id, from_node->point, to_point, from_time, to_time,
   //     env.radii[agent_id]))
   //       continue;
-  //     new_node->earliest_arrival_times.emplace_back(to_time);
+  //     new_node->earliest_arrival_time = to_time;
   //     assert(to_time < min(get<1>(safe_interval), upper_bound));
   //     new_node->intervals.emplace_back(to_time, min(get<1>(safe_interval), upper_bound));
   //     new_node->parent_interval_indicies.emplace_back(i);
   //   }
   // }
-  // if (new_node->earliest_arrival_times.empty()) {
+  // if (new_node->intervals.empty()) {
   //   return nullptr;
   // }
   // new_node->parent = from_node;
@@ -170,15 +165,16 @@ void SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
   // TODO : bug fix
   assert(!neighbors.empty());
   assert(new_node->parent.lock() == nullptr);
-  shared_ptr<LLNode> earliest_arrival_node;
 
+  shared_ptr<LLNode> parent_node;
+
+  double earliest_arrival_time = numeric_limits<double>::max();
   vector<Interval> intervals;
   vector<int> parent_interval_indicies;
+
   for (const auto& neighbor : neighbors) {
     if (constraint_table.obstacleConstrained(agent_id, neighbor->point, new_node->point, env.radii[agent_id])) continue;
     const double expand_time = calculateDistance(neighbor->point, new_node->point) / env.velocities[agent_id];
-
-    double earliest_arrival_time = numeric_limits<double>::max();
 
     for (int i = 0; i < neighbor->intervals.size(); ++i) {
       const double lower_bound = get<0>(neighbor->intervals[i]) + expand_time;
@@ -201,20 +197,26 @@ void SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
 
         if (to_time < earliest_arrival_time) {
           earliest_arrival_time = to_time;
-          earliest_arrival_node = neighbor;
+          parent_node = neighbor;
           intervals.clear();
           parent_interval_indicies.clear();
         }
 
-        intervals.emplace_back(to_time, min(get<1>(safe_interval), upper_bound));
-        parent_interval_indicies.emplace_back(i);
+        if (parent_node == neighbor) {
+          intervals.emplace_back(to_time, min(get<1>(safe_interval), upper_bound));
+          parent_interval_indicies.emplace_back(i);
+        }
       }
     }
   }
+  // This should be removed after bug fix
+  assert(intervals.size() == parent_node->intervals.size());
   new_node->intervals = intervals;
   new_node->parent_interval_indicies = parent_interval_indicies;
-  new_node->parent = earliest_arrival_node;
-  earliest_arrival_node->children.emplace_back(new_node);
+  new_node->parent = parent_node;
+  parent_node->children.emplace_back(new_node);
+  new_node->earliest_arrival_time = earliest_arrival_time;
+  assert(new_node->earliest_arrival_time - new_node->parent.lock()->earliest_arrival_time < 10.0 + env.threshold);
 }
 
 void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
@@ -275,6 +277,11 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
       cout << "New node earliest arrival time: " << new_node->earliest_arrival_time << endl;
       cout << "Earliest arrival time for parent: " << neighbor->parent.lock()->earliest_arrival_time << endl;
     }
+  }
+
+  for (auto& neighbor : neighbors) {
+    if (neighbor->parent.lock() == nullptr) continue;
+    assert(neighbor->earliest_arrival_time - neighbor->parent.lock()->earliest_arrival_time < 10.0 + env.threshold);
   }
 }
 
