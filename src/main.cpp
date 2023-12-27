@@ -24,7 +24,7 @@ int main() {
     goal_sample_rates.emplace_back(10.0);
   }
   vector<shared_ptr<Obstacle>> obstacles;
-  obstacles.emplace_back(make_shared<CircularObstacle>(5, 5, 2));
+  obstacles.emplace_back(make_shared<CircularObstacle>(15, 15, 2));
 
   SharedEnv env = SharedEnv(num_of_agents, width, height, start_points, goal_points, radii, max_expand_distances,
                             velocities, iterations, goal_sample_rates, obstacles);

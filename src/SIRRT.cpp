@@ -54,10 +54,6 @@ Path SIRRT::run() {
       //                                        env.radii[agent_id]))
       //   continue;
 
-      // SICBS
-      // goal_node = new_node;
-      // cout << "Goal node updated: " << goal_node->earliest_arrival_time << endl;
-      // break;
       for (auto& interval : new_node->intervals) {
         if (get<0>(interval) < earliest_goal_arrival_time) continue;
         if (goal_node == nullptr || get<0>(interval) < goal_node->earliest_arrival_time) {
@@ -81,7 +77,7 @@ Path SIRRT::run() {
       const double time_diff = get<1>(path[j + 1]) - get<1>(path[j]);
       assert(distance / time_diff < env.velocities[agent_id] + env.threshold);
     }
-    cout << "Path found!" << endl;
+    // cout << "Path found!" << endl;
     return path;
   }
 
@@ -231,8 +227,9 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
         const double to_time = max(get<0>(safe_interval), lower_bound);
         const double from_time = to_time - expand_time;
         if (constraint_table.constrained(agent_id, neighbor->point, new_node->point, from_time, to_time,
-                                         env.radii[agent_id]))
+                                         env.radii[agent_id])) {
           continue;
+        }
         assert(to_time < min(get<1>(safe_interval), upper_bound));
         if (to_time < earliest_arrival_time) {
           earliest_arrival_time = to_time;
