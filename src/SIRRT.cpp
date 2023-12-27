@@ -255,10 +255,13 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
           earliest_arrival_time = to_time;
         }
         assert(to_time < min(get<1>(safe_interval), upper_bound));
+
         intervals.emplace_back(to_time, min(get<1>(safe_interval), upper_bound));
         parent_interval_indices.emplace_back(i);
       }
     }
+
+    assert(intervals.size() == new_node->intervals.size());
 
     if (earliest_arrival_time < neighbor->earliest_arrival_time) {
       propagateCostToSuccessor(neighbor, earliest_arrival_time - neighbor->earliest_arrival_time);
