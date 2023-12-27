@@ -17,6 +17,7 @@ class SIRRT {
   std::uniform_real_distribution<> dis_height;
   std::uniform_real_distribution<> dis_100;
   vector<shared_ptr<LLNode>> nodes;
+  shared_ptr<LLNode> goal_node;
   Point start_point;
   Point goal_point;
   Path path;

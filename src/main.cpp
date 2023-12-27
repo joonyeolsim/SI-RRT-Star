@@ -20,7 +20,7 @@ int main() {
     max_expand_distances.emplace_back(5.0);
     velocities.emplace_back(0.5);
     thresholds.emplace_back(0.01);
-    iterations.emplace_back(1000);
+    iterations.emplace_back(500);
     goal_sample_rates.emplace_back(10.0);
   }
   vector<shared_ptr<Obstacle>> obstacles;
