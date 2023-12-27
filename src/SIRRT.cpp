@@ -20,6 +20,8 @@ Path SIRRT::run() {
     if (new_node == nullptr) {
       continue;
     }
+
+    // SIRRT*
     vector<shared_ptr<LLNode>> neighbors;
     bool success = false;
     getNeighbors(new_node, neighbors);
@@ -97,6 +99,8 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
   constraint_table.getSafeIntervalTableConstraint(agent_id, to_point, env.radii[agent_id], safe_intervals);
   if (safe_intervals.empty()) return nullptr;
   safe_interval_table.table[to_point] = safe_intervals;
+
+  // SIRRT
   // for (int i = 0; i < from_node->intervals.size(); ++i) {
   //   const double lower_bound = get<0>(from_node->intervals[i]) + expand_time;
   //   const double upper_bound = get<1>(from_node->intervals[i]) + expand_time;
@@ -123,6 +127,7 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
   //   return nullptr;
   // }
   // new_node->parent = from_node;
+
   return new_node;
 }
 

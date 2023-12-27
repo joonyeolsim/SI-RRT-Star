@@ -4,7 +4,7 @@
 #include "SharedEnv.h"
 
 int main() {
-  int num_of_agents = 30;
+  int num_of_agents = 50;
   int width = 32;
   int height = 32;
   vector<Point> start_points;
@@ -32,21 +32,26 @@ int main() {
   ConstraintTable constraint_table(env);
   Solution soluiton;
   auto start = std::chrono::high_resolution_clock::now();
+
   // SI-CBS
   SICBS sicbs(env, constraint_table);
   soluiton = sicbs.run();
+  cout << "solution cost: " << sicbs.sum_of_costs << endl;
 
   // SI-RRT PP
+  // double sum_of_costs = 0.0;
   // for (int agent_id = 0; agent_id < num_of_agents; ++agent_id) {
   //   SIRRT sirrt(agent_id, env, constraint_table);
   //   auto path = sirrt.run();
   //   constraint_table.insertPathToConstraint(agent_id, path);
   //   soluiton.emplace_back(path);
+  //   sum_of_costs += get<1>(path.back());
   // }
+  // cout << "solution cost: " << sum_of_costs << endl;
+
   auto stop = std::chrono::high_resolution_clock::now();
   chrono::duration<double, std::ratio<1>> duration = stop - start;
   cout << "Time taken by function: " << duration.count() << " seconds" << endl;
-  cout << "solution cost: " << sicbs.sum_of_costs << endl;
   saveSolution(soluiton, "solution.txt");
   return 0;
 }
