@@ -12,11 +12,12 @@
 class ConstraintTable {
  public:
   vector<Path> path_table;
-  vector<vector<Constraint>> constraint_table;
+  vector<vector<Constraint>> hard_constraint_table;
+  vector<Constraint> soft_constraint_table;
   SharedEnv& env;
 
-  ConstraintTable(SharedEnv& env) : env(env), path_table(env.num_of_robots), constraint_table(env.num_of_robots) {}
-  void insertPathToConstraint(int agent_id, Path path);
+  ConstraintTable(SharedEnv& env) : env(env), path_table(env.num_of_robots), hard_constraint_table(env.num_of_robots) {}
+  void insertPathToSoftConstraint(int agent_id, Path path);
   bool obstacleConstrained(int agent_id, const Point& from_point, const Point& to_point, double radius) const;
   void getSafeIntervalTablePath(int agent_id, const Point& to_point, double radius,
                                 vector<Interval>& safe_intervals) const;

@@ -1,6 +1,8 @@
 #include "ConstraintTable.h"
 
-void ConstraintTable::insertPathToConstraint(int agent_id, Path path) { path_table[agent_id] = path; }
+void ConstraintTable::insertPathToSoftConstraint(int agent_id, Path path) {
+  path_table[agent_id] = path;
+}
 
 bool ConstraintTable::obstacleConstrained(int agent_id, const Point& from_point, const Point& to_point,
                                           double radius) const {
@@ -76,7 +78,7 @@ bool ConstraintTable::constrained(int agent_id, const Point& from_point, const P
                                   double to_time, double radius) const {
   assert(from_time < to_time);
   // vertex-edge conflict
-  for (auto [constrained_radius, constrained_path] : constraint_table[agent_id]) {
+  for (auto [constrained_radius, constrained_path] : hard_constraint_table[agent_id]) {
     for (auto [constrained_point, constrained_time] : constrained_path) {
       // check if temporal constraint is satisfied
       if (constrained_time > to_time || constrained_time <= from_time) continue;
@@ -99,9 +101,9 @@ bool ConstraintTable::constrained(int agent_id, const Point& from_point, const P
 }
 
 void ConstraintTable::updateConstraints(const int agent_id, const vector<Constraint>& constraints) {
-  constraint_table[agent_id].clear();
+  hard_constraint_table[agent_id].clear();
   for (const auto& constraint : constraints) {
-    constraint_table[agent_id].emplace_back(constraint);
+    hard_constraint_table[agent_id].emplace_back(constraint);
   }
 }
 
@@ -152,7 +154,7 @@ void ConstraintTable::getSafeIntervalTableConstraint(int agent_id, const Point& 
                                                      vector<Interval>& safe_intervals) const {
   assert(safe_intervals.empty());
   safe_intervals.emplace_back(0.0, numeric_limits<double>::max());
-  for (auto [constrained_radius, constrained_path] : constraint_table[agent_id]) {
+  for (auto [constrained_radius, constrained_path] : hard_constraint_table[agent_id]) {
     bool is_safe = true;
     double collision_start_time = 0.0;
 
@@ -231,7 +233,7 @@ bool ConstraintTable::targetConstrainedPath(const Point& other_point, double oth
 bool ConstraintTable::targetConstrained(int agent_id, const Point& other_point, double other_time,
                                         double other_radius) const {
   // vertex-edge conflict
-  for (auto [constrained_radius, constrained_path] : constraint_table[agent_id]) {
+  for (auto [constrained_radius, constrained_path] : hard_constraint_table[agent_id]) {
     for (auto [constrained_point, constrained_time] : constrained_path) {
       // check if temporal constraint is satisfied
       if (other_time > constrained_time) continue;

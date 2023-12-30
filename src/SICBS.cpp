@@ -4,6 +4,9 @@ Solution SICBS::run() {
   HLNode root;
   root.constraint_table.resize(env.num_of_robots);
   root.solution = getInitialSolution();
+  for (auto& path : root.solution) {
+    constraint_table.insertPathToConstraint()
+  }
   root.cost = calculateCost(root.solution);
   findConflicts(root.solution, root.conflicts);
 
@@ -43,7 +46,7 @@ Solution SICBS::run() {
 
       // update constraints
       new_node.constraint_table[agent_ids[i]].emplace_back(env.radii[agent_ids[j]], partial_paths[j]);
-      constraint_table.constraint_table = new_node.constraint_table;
+      constraint_table.hard_constraint_table = new_node.constraint_table;
 
       // pruning nodes
       // update safe intervals
