@@ -1,7 +1,7 @@
 #include "ConstraintTable.h"
 
 void ConstraintTable::insertPathToSoftConstraint(int agent_id, Path path) {
-  path_table[agent_id] = path;
+  soft_constraint_table.emplace_back(env.radii[agent_id], path);
 }
 
 bool ConstraintTable::obstacleConstrained(int agent_id, const Point& from_point, const Point& to_point,
@@ -98,13 +98,6 @@ bool ConstraintTable::constrained(int agent_id, const Point& from_point, const P
     }
   }
   return false;
-}
-
-void ConstraintTable::updateConstraints(const int agent_id, const vector<Constraint>& constraints) {
-  hard_constraint_table[agent_id].clear();
-  for (const auto& constraint : constraints) {
-    hard_constraint_table[agent_id].emplace_back(constraint);
-  }
 }
 
 // THIS FUNCTION IS FOR PRIORITIZED PLANNING

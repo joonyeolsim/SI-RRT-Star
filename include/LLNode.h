@@ -12,11 +12,11 @@ class LLNode {
   Point point;
   weak_ptr<LLNode> parent;
   vector<shared_ptr<LLNode>> children;
-  double earliest_arrival_time;
+  vector<double> cost_table;
   vector<Interval> intervals;
   vector<int> parent_interval_indicies;
 
-  explicit LLNode(Point point) : point(std::move(point)), earliest_arrival_time(numeric_limits<double>::max()) {}
+  explicit LLNode(Point point) : point(std::move(point)) {}
 };
 
 #endif  // LLNODE_H

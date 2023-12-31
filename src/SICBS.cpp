@@ -4,8 +4,8 @@ Solution SICBS::run() {
   HLNode root;
   root.constraint_table.resize(env.num_of_robots);
   root.solution = getInitialSolution();
-  for (auto& path : root.solution) {
-    constraint_table.insertPathToConstraint()
+  for (int i = 0; i < env.num_of_robots; i++) {
+    constraint_table.insertPathToSoftConstraint(i, root.solution[i]);
   }
   root.cost = calculateCost(root.solution);
   findConflicts(root.solution, root.conflicts);

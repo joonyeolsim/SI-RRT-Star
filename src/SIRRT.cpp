@@ -17,7 +17,8 @@ Path SIRRT::run() {
 
   // initialize start node
   const auto start_node = make_shared<LLNode>(start_point);
-  start_node->earliest_arrival_time = 0;
+  start_node->min_cost = 0.0;
+  start_node->cost_table = {0.0};
   start_node->intervals = {{0, min(numeric_limits<double>::max(), get<1>(start_safe_intervals[0]))}};
   nodes.push_back(start_node);
 
@@ -56,9 +57,9 @@ Path SIRRT::run() {
 
       for (auto& interval : new_node->intervals) {
         if (get<0>(interval) < earliest_goal_arrival_time) continue;
-        if (goal_node == nullptr || get<0>(interval) < goal_node->earliest_arrival_time) {
+        if (goal_node == nullptr || get<0>(interval) < goal_node->cost) {
           goal_node = new_node;
-          goal_node->earliest_arrival_time = get<0>(interval);
+          goal_node->cost = get<0>(interval);
         }
       }
     } else {
@@ -204,7 +205,7 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
 
   shared_ptr<LLNode> parent_node;
 
-  double earliest_arrival_time = numeric_limits<double>::max();
+  double min_cost = numeric_limits<double>::max();
   vector<Interval> intervals;
   vector<int> parent_interval_indicies;
 
@@ -230,9 +231,13 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
                                          env.radii[agent_id])) {
           continue;
         }
+        if (constraint_table.softConstrained(agent_id, neighbor->point, new_node->point, from_time, to_time,
+                                             env.radii[agent_id])) {
+          neighbor->cost_table[i] = neighbor->cost_table[i] + 1;
+        }
         assert(to_time < min(get<1>(safe_interval), upper_bound));
-        if (to_time < earliest_arrival_time) {
-          earliest_arrival_time = to_time;
+        if (to_time < min_cost) {
+          min_cost = to_time;
           parent_node = neighbor;
           intervals.clear();
           parent_interval_indicies.clear();
@@ -255,8 +260,8 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
   new_node->parent_interval_indicies = parent_interval_indicies;
   new_node->parent = parent_node;
   parent_node->children.emplace_back(new_node);
-  assert(new_node->earliest_arrival_time - parent_node->earliest_arrival_time >= 0);
-  new_node->earliest_arrival_time = earliest_arrival_time;
+  assert(new_node->cost - parent_node->cost >= 0);
+  new_node->cost = min_cost;
   return true;
 }
 
@@ -291,7 +296,7 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
         if (constraint_table.constrained(agent_id, new_node->point, neighbor->point, from_time, to_time,
                                          env.radii[agent_id]))
           continue;
-        if (to_time < neighbor->earliest_arrival_time) {
+        if (to_time < neighbor->cost) {
           earliest_arrival_time = to_time;
         }
         assert(to_time < min(get<1>(safe_interval), upper_bound));
@@ -302,8 +307,8 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
       }
     }
 
-    if (earliest_arrival_time < neighbor->earliest_arrival_time) {
-      neighbor->earliest_arrival_time = earliest_arrival_time;
+    if (earliest_arrival_time < neighbor->cost) {
+      neighbor->cost = earliest_arrival_time;
       neighbor->intervals = intervals;
       neighbor->parent_interval_indicies = parent_interval_indices;
       // update parent
@@ -313,13 +318,13 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
       neighbor->parent = new_node;
       new_node->children.emplace_back(neighbor);
       propagateCostToSuccessor(neighbor, safe_interval_table);
-      assert(neighbor->earliest_arrival_time - new_node->earliest_arrival_time >= 0);
+      assert(neighbor->cost - new_node->cost >= 0);
     }
   }
 }
 
 void SIRRT::propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeIntervalTable& safe_interval_table) {
-  assert(node->earliest_arrival_time >= 0);
+  assert(node->cost >= 0);
   for (const auto& child : node->children) {
     child->intervals.clear();
     child->parent_interval_indicies.clear();
@@ -341,7 +346,7 @@ void SIRRT::propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeInterva
           continue;
         assert(to_time < min(get<1>(safe_interval), upper_bound));
 
-        child->earliest_arrival_time = min(child->earliest_arrival_time, to_time);
+        child->cost = min(child->cost, to_time);
         child->intervals.emplace_back(to_time, min(get<1>(safe_interval), upper_bound));
         assert(get<0>(child->intervals.back()) + env.threshold < get<1>(child->intervals.back()));
         child->parent_interval_indicies.emplace_back(i);
