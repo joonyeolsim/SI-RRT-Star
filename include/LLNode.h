@@ -12,11 +12,32 @@ class LLNode {
   Point point;
   weak_ptr<LLNode> parent;
   vector<shared_ptr<LLNode>> children;
-  vector<double> cost_table;
+  double earliest_arrival_time;
   vector<Interval> intervals;
+  double min_soft_conflict;
+  vector<double> soft_conflicts;
   vector<int> parent_interval_indicies;
 
-  explicit LLNode(Point point) : point(std::move(point)) {}
+  explicit LLNode(Point point)
+      : point(std::move(point)),
+        earliest_arrival_time(numeric_limits<double>::infinity()),
+        min_soft_conflict(numeric_limits<double>::infinity()) {}
+
+  // compare node by earliest_arrival_time
+  // bool operator<(const LLNode& other) const {
+  //   if (earliest_arrival_time == other.earliest_arrival_time) {
+  //     return min_soft_conflict < other.min_soft_conflict;
+  //   }
+  //   return earliest_arrival_time < other.earliest_arrival_time;
+  // }
+
+  // compare node by min soft conflict
+  bool operator<(const LLNode& other) const {
+    if (min_soft_conflict == other.min_soft_conflict) {
+      return earliest_arrival_time < other.earliest_arrival_time;
+    }
+    return min_soft_conflict < other.min_soft_conflict;
+  }
 };
 
 #endif  // LLNODE_H

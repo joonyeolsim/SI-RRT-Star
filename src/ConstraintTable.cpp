@@ -1,7 +1,7 @@
 #include "ConstraintTable.h"
 
 void ConstraintTable::insertPathToSoftConstraint(int agent_id, Path path) {
-  soft_constraint_table.emplace_back(env.radii[agent_id], path);
+  soft_constraint_table[agent_id].emplace_back(env.radii[agent_id], path);
 }
 
 bool ConstraintTable::obstacleConstrained(int agent_id, const Point& from_point, const Point& to_point,
@@ -94,6 +94,35 @@ bool ConstraintTable::constrained(int agent_id, const Point& from_point, const P
       }
       if (calculateDistance(occupied_point, constrained_point) < radius + constrained_radius) {
         return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool ConstraintTable::softConstrained(int agent_id, const Point& from_point, const Point& to_point, double from_time,
+                                  double to_time, double radius) const {
+  assert(from_time < to_time);
+  // vertex-edge conflict
+  for (int other_agent_id = 0; other_agent_id < soft_constraint_table.size(); ++other_agent_id) {
+    if (other_agent_id == agent_id) continue;
+    for (auto [constrained_radius, constrained_path] : soft_constraint_table[other_agent_id]) {
+      for (auto [constrained_point, constrained_time] : constrained_path) {
+        // check if temporal constraint is satisfied
+        if (constrained_time > to_time || constrained_time <= from_time) continue;
+
+        const auto occupied_expand_time = constrained_time - from_time;
+        const auto occupied_theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
+
+        auto occupied_point = from_point;
+        if (occupied_theta != 0.0) {
+          occupied_point =
+              make_tuple(get<0>(from_point) + env.velocities[agent_id] * cos(occupied_theta) * occupied_expand_time,
+                         get<1>(from_point) + env.velocities[agent_id] * sin(occupied_theta) * occupied_expand_time);
+        }
+        if (calculateDistance(occupied_point, constrained_point) < radius + constrained_radius) {
+          return true;
+        }
       }
     }
   }
