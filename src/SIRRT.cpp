@@ -6,12 +6,12 @@ Path SIRRT::run() {
 
   // initialize start and goal safe intervals
   vector<Interval> start_safe_intervals;
-  constraint_table.getSafeIntervalTableConstraint(agent_id, start_point, env.radii[agent_id], start_safe_intervals);
+  constraint_table.getSafeIntervalTable(agent_id, start_point, env.radii[agent_id], start_safe_intervals);
   assert(!start_safe_intervals.empty());
   safe_interval_table.table[start_point] = start_safe_intervals;
 
   vector<Interval> goal_safe_intervals;
-  constraint_table.getSafeIntervalTableConstraint(agent_id, goal_point, env.radii[agent_id], goal_safe_intervals);
+  constraint_table.getSafeIntervalTable(agent_id, goal_point, env.radii[agent_id], goal_safe_intervals);
   assert(!goal_safe_intervals.empty());
   safe_interval_table.table[goal_point] = goal_safe_intervals;
 
@@ -56,6 +56,7 @@ Path SIRRT::run() {
     if (calculateDistance(new_node->point, goal_point) < env.epsilon) {
       // SIRRTPP
       for (int i = 0; i < new_node->intervals.size(); ++i) {
+        // target hard constraint
         if (get<0>(new_node->intervals[i]) < earliest_goal_arrival_time) continue;
         if (goal_node == nullptr || new_node->soft_conflicts[i] < best_min_soft_conflict) {
           goal_node = new_node;
@@ -134,7 +135,7 @@ shared_ptr<LLNode> SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point
   auto new_node = make_shared<LLNode>(to_point);
 
   vector<Interval> safe_intervals;
-  constraint_table.getSafeIntervalTableConstraint(agent_id, to_point, env.radii[agent_id], safe_intervals);
+  constraint_table.getSafeIntervalTable(agent_id, to_point, env.radii[agent_id], safe_intervals);
   if (safe_intervals.empty()) {
     return nullptr;
   }
@@ -225,11 +226,14 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
         // 즉, 바로 이동할 수 없을 때 에이전트는 기다려야 한다.
         const double from_time = to_time - expand_time;
 
-        // new node로의 이동이 hard constraint를 위반한다면 continue
+        // TODO: 여기도 getearliestarrivaltime으로 분기해야됨.
         if (constraint_table.hardConstrained(agent_id, neighbor->point, new_node->point, from_time, to_time,
                                              env.radii[agent_id])) {
           continue;
         }
+
+        // TODO: 여기서 분기해야됨.
+        const double soft_lower_bound = constraint_table.getSoftLowerBound(agent_id, new_node->point, lower_bound, upper_bound, env.radii[agent_id]);
 
         // new node로의 이동이 soft constraint를 위반한다면 soft_conflict를 1 증가시킨다.
         double soft_conflict;

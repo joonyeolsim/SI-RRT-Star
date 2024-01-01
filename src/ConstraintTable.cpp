@@ -165,6 +165,10 @@ bool ConstraintTable::softConstrained(int agent_id, const Point& from_point, con
   return false;
 }
 
+// bool futureSoftConstrained() {
+//
+// }
+
 // THIS FUNCTION IS FOR PRIORITIZED PLANNING
 void ConstraintTable::getSafeIntervalTablePath(int agent_id, const Point& to_point, double radius,
                                                vector<Interval>& safe_intervals) const {
@@ -208,7 +212,7 @@ void ConstraintTable::getSafeIntervalTablePath(int agent_id, const Point& to_poi
   }
 }
 
-void ConstraintTable::getSafeIntervalTableConstraint(int agent_id, const Point& to_point, double radius,
+void ConstraintTable::getSafeIntervalTable(int agent_id, const Point& to_point, double radius,
                                                      vector<Interval>& safe_intervals) const {
   assert(safe_intervals.empty());
   safe_intervals.emplace_back(0.0, numeric_limits<double>::max());
@@ -233,6 +237,52 @@ void ConstraintTable::getSafeIntervalTableConstraint(int agent_id, const Point& 
       assert(!safe_intervals.empty());
     }
   }
+}
+
+// 이 코드 참고
+// int ReservationTable::get_earliest_arrival_time(int from, int to, int lower_bound, int upper_bound) const
+// {
+//   for (auto t = lower_bound; t < upper_bound; t++)
+//   {
+//     if (!constraint_table.constrained(from, to, t))
+//       return t;
+//   }
+//   return -1;
+// }
+// int ReservationTable::get_earliest_no_collision_arrival_time(int from, int to, const Interval& interval,
+//                                                              int lower_bound, int upper_bound) const
+// {
+//   for (auto t = max(lower_bound, get<0>(interval)); t < min(upper_bound, get<1>(interval)); t++)
+//   {
+//     if (!constraint_table.hasEdgeConflict(from, to, t))
+//       return t;
+//   }
+//   return -1;
+// }
+
+double ConstraintTable::getSoftLowerBound(int agent_id, const Point& to_point, double lower_bound, double upper_bound, double radius) const {
+  double soft_lower_bound = lower_bound;
+  while (soft_lower_bound < upper_bound) {
+    bool is_safe = true;
+    for (int other_agent_id = 0; other_agent_id < soft_constraint_table.size(); ++other_agent_id) {
+      if (other_agent_id == agent_id) continue;
+      for (auto [constrained_radius, constrained_path] : soft_constraint_table[other_agent_id]) {
+        for (auto [constrained_point, constrained_time] : constrained_path) {
+          if (constrained_time < soft_lower_bound - env.epsilon) continue;
+          if (constrained_time > upper_bound + env.epsilon) break;
+          if (calculateDistance(constrained_point, to_point) < radius + constrained_radius) {
+            is_safe = false;
+            break;
+          }
+        }
+        if (!is_safe) break;
+      }
+      if (!is_safe) break;
+    }
+    if (is_safe) break;
+    soft_lower_bound += 1.0;
+  }
+  return soft_lower_bound;
 }
 
 void ConstraintTable::insertToSafeIntervalTable(vector<Interval>& safe_intervals, double t_min, double t_max) {
