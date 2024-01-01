@@ -252,7 +252,7 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
     if (candidate_intervals.empty()) continue;
 
     double earliest_arrival_time = numeric_limits<double>::infinity();
-    int min_soft_conflict = numeric_limits<int>::infinity();
+    int min_soft_conflict = numeric_limits<int>::max();
     for (const auto& interval : candidate_intervals) {
       earliest_arrival_time = min(earliest_arrival_time, get<0>(interval));
     }
@@ -337,7 +337,7 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
     if (candidate_intervals.empty()) continue;
 
     double earliest_arrival_time = numeric_limits<double>::infinity();
-    int min_soft_conflict = numeric_limits<int>::infinity();
+    int min_soft_conflict = numeric_limits<int>::max();
     for (const auto& interval : candidate_intervals) {
       earliest_arrival_time = min(earliest_arrival_time, get<0>(interval));
     }
@@ -436,7 +436,7 @@ void SIRRT::propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeInterva
     }
 
     double earliest_arrival_time = numeric_limits<double>::infinity();
-    int min_soft_conflict = numeric_limits<int>::infinity();
+    int min_soft_conflict = numeric_limits<int>::max();
     for (const auto& interval : child->intervals) {
       earliest_arrival_time = min(earliest_arrival_time, get<0>(interval));
     }

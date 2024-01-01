@@ -21,7 +21,7 @@ class LLNode {
   explicit LLNode(Point point)
       : point(std::move(point)),
         earliest_arrival_time(numeric_limits<double>::infinity()),
-        min_soft_conflict(numeric_limits<double>::infinity()) {}
+        min_soft_conflict(numeric_limits<int>::max()) {}
 
   // compare node by earliest_arrival_time
   bool operator<(const LLNode& other) const {
