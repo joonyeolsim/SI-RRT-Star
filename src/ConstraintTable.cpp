@@ -137,7 +137,6 @@ bool ConstraintTable::hardConstrained(int agent_id, const Point& from_point, con
 
 bool ConstraintTable::softConstrained(int agent_id, const Point& from_point, const Point& to_point, double from_time,
                                       double to_time, double radius) const {
-  // TODO: thinking about target conflict
   assert(from_time < to_time);
   // vertex-edge conflict
   for (int other_agent_id = 0; other_agent_id < soft_constraint_table.size(); ++other_agent_id) {
