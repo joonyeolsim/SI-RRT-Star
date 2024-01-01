@@ -23,6 +23,7 @@ Solution SICBS::run() {
          << "(Agent " << agent_ids[0] << ", Agent " << agent_ids[1] << "), " << endl;
     const auto partial_path1 = get<0>(get<2>(conflict));
     const auto partial_path2 = get<1>(get<2>(conflict));
+    cout << "Interval : " << get<1>(partial_path1.front()) << " ~ " << get<1>(partial_path1.back()) << endl;
     // // print partial path
     // cout << "partial path" << agent_ids[0] << " : ";
     // for (const auto& state : partial_path1) {
@@ -49,20 +50,20 @@ Solution SICBS::run() {
       // update safe intervals
 
       // find new solution satisfying constraints
-      cout << "Before path" << agent_ids[i] << ": ";
-      for (const auto& state : new_node.solution[agent_ids[i]]) {
-        cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
-      }
-      cout << endl;
+      // cout << "Before path" << agent_ids[i] << ": ";
+      // for (const auto& state : new_node.solution[agent_ids[i]]) {
+      //   cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
+      // }
+      // cout << endl;
       new_node.solution[agent_ids[i]] = low_level_planners[agent_ids[i]].run();
       if (new_node.solution[agent_ids[i]].empty()) continue;
       constraint_table.updateSoftConstraint(i, new_node.solution[agent_ids[i]]);
       // print path
-      cout << "After path" << agent_ids[i] << ": ";
-      for (const auto& state : new_node.solution[agent_ids[i]]) {
-        cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
-      }
-      cout << endl;
+      // cout << "After path" << agent_ids[i] << ": ";
+      // for (const auto& state : new_node.solution[agent_ids[i]]) {
+      //   cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
+      // }
+      // cout << endl;
 
       // update cost and conflicts
       new_node.cost = calculateCost(new_node.solution);

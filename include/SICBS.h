@@ -13,18 +13,18 @@
 #include "common.h"
 
 struct compare_function {
-  // bool operator()(const HLNode& a, const HLNode& b) const {
-  //   if (a.cost == b.cost) {
-  //     return a.conflicts.size() > b.conflicts.size();
-  //   }
-  //   return a.cost > b.cost;
-  // }
   bool operator()(const HLNode& a, const HLNode& b) const {
-    if (a.conflicts.size() == b.conflicts.size()) {
-      return a.cost > b.cost;
+    if (a.cost == b.cost) {
+      return a.conflicts.size() > b.conflicts.size();
     }
-    return a.conflicts.size() > b.conflicts.size();
+    return a.cost > b.cost;
   }
+  // bool operator()(const HLNode& a, const HLNode& b) const {
+  //   if (a.conflicts.size() == b.conflicts.size()) {
+  //     return a.cost > b.cost;
+  //   }
+  //   return a.conflicts.size() > b.conflicts.size();
+  // }
 };
 
 class SICBS {

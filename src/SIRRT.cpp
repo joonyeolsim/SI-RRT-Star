@@ -29,7 +29,8 @@ Path SIRRT::run() {
     earliest_goal_arrival_time = max(earliest_goal_arrival_time, get<0>(interval));
   }
 
-  int min_soft_conflict = numeric_limits<int>::max();
+  int best_earliest_arrival_time = numeric_limits<int>::max();
+  int best_min_soft_conflict = numeric_limits<int>::max();
   int iteration = env.iterations[agent_id];
   while (iteration--) {
     Point random_point = generateRandomPoint();
@@ -55,9 +56,13 @@ Path SIRRT::run() {
       // SIRRTPP
       for (int i = 0; i < new_node->intervals.size(); ++i) {
         if (get<0>(new_node->intervals[i]) < earliest_goal_arrival_time) continue;
-        if (goal_node == nullptr || new_node->soft_conflicts[i] < min_soft_conflict) {
+        // if (goal_node == nullptr || new_node->soft_conflicts[i] < best_min_soft_conflict) {
+        //   goal_node = new_node;
+        //   best_min_soft_conflict = new_node->soft_conflicts[i];
+        // }
+        if (goal_node == nullptr || get<0>(new_node->intervals[i]) < best_earliest_arrival_time) {
           goal_node = new_node;
-          min_soft_conflict = new_node->soft_conflicts[i];
+          best_earliest_arrival_time = get<0>(new_node->intervals[i]);
         }
       }
     } else {
@@ -253,7 +258,17 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
     }
 
     // update if new_node is better than neighbor
-    if (best_parent == nullptr || min_soft_conflict < best_min_soft_conflict) {
+    // if (best_parent == nullptr || min_soft_conflict < best_min_soft_conflict) {
+    //   best_parent = neighbor;
+    //   best_earliest_arrival_time = earliest_arrival_time;
+    //   best_min_soft_conflict = min_soft_conflict;
+    //   new_node->earliest_arrival_time = earliest_arrival_time;
+    //   new_node->min_soft_conflict = min_soft_conflict;
+    //   new_node->intervals = move(candidate_intervals);
+    //   new_node->soft_conflicts = move(candidate_soft_conflicts);
+    //   new_node->parent_interval_indices = move(candidate_parent_interval_indices);
+    // }
+    if (best_parent == nullptr || earliest_arrival_time < best_earliest_arrival_time) {
       best_parent = neighbor;
       best_earliest_arrival_time = earliest_arrival_time;
       best_min_soft_conflict = min_soft_conflict;
@@ -332,7 +347,26 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
     }
 
     // update if new_node is better than neighbor
-    if (min_soft_conflict < neighbor->min_soft_conflict) {
+    // if (min_soft_conflict < neighbor->min_soft_conflict) {
+    //   neighbor->earliest_arrival_time = earliest_arrival_time;
+    //   neighbor->min_soft_conflict = min_soft_conflict;
+    //   neighbor->intervals = move(intervals);
+    //   neighbor->soft_conflicts = move(soft_conflicts);
+    //   neighbor->parent_interval_indices = move(parent_interval_indices);
+    //   // update parent
+    //   auto old_parent = neighbor->parent.lock();
+    //   if (old_parent) {
+    //     old_parent->children.erase(remove(old_parent->children.begin(), old_parent->children.end(), neighbor),
+    //                                old_parent->children.end());
+    //   }
+    //
+    //   neighbor->parent = new_node;
+    //   new_node->children.emplace_back(neighbor);
+    //   propagateCostToSuccessor(neighbor, safe_interval_table);
+    //   assert(neighbor->earliest_arrival_time - new_node->earliest_arrival_time >= 0);
+    //   assert(neighbor->min_soft_conflict - new_node->min_soft_conflict >= 0);
+    // }
+    if (earliest_arrival_time < neighbor->earliest_arrival_time) {
       neighbor->earliest_arrival_time = earliest_arrival_time;
       neighbor->min_soft_conflict = min_soft_conflict;
       neighbor->intervals = move(intervals);
@@ -395,9 +429,9 @@ void SIRRT::propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeInterva
     }
 
     // 업데이트로 interval이 없어진 child는 삭제한다.
-    if (intervals.empty()) {
-      continue;
-    }
+    // if (intervals.empty()) {
+    //   continue;
+    // }
 
     double earliest_arrival_time = numeric_limits<double>::infinity();
     int min_soft_conflict = numeric_limits<int>::infinity();
