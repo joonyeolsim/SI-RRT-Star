@@ -82,7 +82,8 @@ bool ConstraintTable::hardConstrained(int agent_id, const Point& from_point, con
   for (auto [constrained_radius, constrained_path] : hard_constraint_table[agent_id]) {
     for (auto [constrained_point, constrained_time] : constrained_path) {
       // check if temporal constraint is satisfied
-      if (constrained_time > to_time || constrained_time <= from_time) continue;
+      if (constrained_time > to_time - env.epsilon) continue;
+      if (constrained_time < from_time + env.epsilon) break;
 
       const auto occupied_expand_time = constrained_time - from_time;
       const auto occupied_theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
@@ -110,7 +111,8 @@ bool ConstraintTable::softConstrained(int agent_id, const Point& from_point, con
     for (auto [constrained_radius, constrained_path] : soft_constraint_table[other_agent_id]) {
       for (auto [constrained_point, constrained_time] : constrained_path) {
         // check if temporal constraint is satisfied
-        if (constrained_time > to_time || constrained_time <= from_time) continue;
+        if (constrained_time > to_time - env.epsilon) continue;
+        if (constrained_time < from_time + env.epsilon) break;
 
         const auto occupied_expand_time = constrained_time - from_time;
         const auto occupied_theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
@@ -123,6 +125,16 @@ bool ConstraintTable::softConstrained(int agent_id, const Point& from_point, con
         }
         if (calculateDistance(occupied_point, constrained_point) < radius + constrained_radius) {
           return true;
+        }
+      }
+      // target conflict
+      if (get<1>(constrained_path.back()) < to_time) {
+        vector<Point> interpolated_points;
+        interpolatePoint(agent_id, from_point, to_point, interpolated_points);
+        for (const auto& interpolated_point : interpolated_points) {
+          if (calculateDistance(get<0>(constrained_path.back()), interpolated_point) < radius + constrained_radius) {
+            return true;
+          }
         }
       }
     }
@@ -283,7 +295,7 @@ void ConstraintTable::interpolatePoint(int agent_id, const Point& from_point, co
     interpolated_points.emplace_back(interpoated_point);
   }
   const double remain_time = fmod(expand_distance, env.velocities[agent_id]);
-  if (remain_time > env.threshold) {
+  if (remain_time > env.epsilon) {
     Point interpoated_point = from_point;
     if (theta != 0.0) {
       interpoated_point = make_tuple(get<0>(from_point) + env.velocities[agent_id] * cos(theta) * expand_time,
@@ -298,8 +310,8 @@ void ConstraintTable::interpolatePoint(int agent_id, const Point& from_point, co
 
   assert(!interpolated_points.empty());
   assert(calculateDistance(interpolated_points.back(), from_point) <
-         env.max_expand_distances[agent_id] + env.threshold);
-  assert(calculateDistance(interpolated_points.front(), to_point) < env.max_expand_distances[agent_id] + env.threshold);
+         env.max_expand_distances[agent_id] + env.epsilon);
+  assert(calculateDistance(interpolated_points.front(), to_point) < env.max_expand_distances[agent_id] + env.epsilon);
 }
 
 void ConstraintTable::interpolatePointTime(int agent_id, const Point& from_point, const Point& to_point,
@@ -317,7 +329,7 @@ void ConstraintTable::interpolatePointTime(int agent_id, const Point& from_point
     interpoated_times.emplace_back(from_time + timestep);
   }
   const double remain_time = fmod(expand_distance, env.velocities[agent_id]);
-  if (remain_time > env.threshold) {
+  if (remain_time > env.epsilon) {
     Point interpoated_point = make_tuple(get<0>(from_point) + env.velocities[agent_id] * cos(theta) * expand_time,
                                          get<1>(from_point) + env.velocities[agent_id] * sin(theta) * expand_time);
     interpolated_points.emplace_back(interpoated_point);
@@ -327,6 +339,6 @@ void ConstraintTable::interpolatePointTime(int agent_id, const Point& from_point
   assert(!interpolated_points.empty());
   assert(interpolated_points.size() == interpoated_times.size());
   assert(calculateDistance(interpolated_points.back(), from_point) <
-         env.max_expand_distances[agent_id] + env.threshold);
-  assert(calculateDistance(interpolated_points.front(), to_point) < env.max_expand_distances[agent_id] + env.threshold);
+         env.max_expand_distances[agent_id] + env.epsilon);
+  assert(calculateDistance(interpolated_points.front(), to_point) < env.max_expand_distances[agent_id] + env.epsilon);
 }

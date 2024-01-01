@@ -19,8 +19,8 @@ Solution SICBS::run() {
 
     auto conflict = curr_node.conflicts[0];
     vector<int> agent_ids = {get<0>(conflict), get<1>(conflict)};
-    // cout << "Conflict : "
-    //      << "(Agent " << agent_ids[0] << ", Agent " << agent_ids[1] << "), " << endl;
+    cout << "Conflict : "
+         << "(Agent " << agent_ids[0] << ", Agent " << agent_ids[1] << "), " << endl;
     const auto partial_path1 = get<0>(get<2>(conflict));
     const auto partial_path2 = get<1>(get<2>(conflict));
     // // print partial path
