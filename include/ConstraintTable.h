@@ -26,7 +26,10 @@ class ConstraintTable {
   void getSafeIntervalTablePath(int agent_id, const Point& to_point, double radius,
                                 vector<Interval>& safe_intervals) const;
   void getSafeIntervalTable(int agent_id, const Point& to_point, double radius, vector<Interval>& safe_intervals) const;
-  double getSoftLowerBound(int agent_id, const Point& to_point, double lower_bound, double upper_bound, double radius) const;
+  double getEarliestArrivalTime(int agent_id, const Point& from_point, const Point& to_point, double expand_time,
+                                double lower_bound, double upper_bound, double radius) const;
+  double getEarliestArrivalTimeSoft(int agent_id, const Point& from_point, const Point& to_point, double expand_time,
+                                    double lower_bound, double upper_bound, double radius) const;
   bool pathConstrained(int agent_id, const Point& from_point, const Point& to_point, double from_time, double to_time,
                        double radius) const;
   bool hardConstrained(int agent_id, const Point& from_point, const Point& to_point, double from_time, double to_time,

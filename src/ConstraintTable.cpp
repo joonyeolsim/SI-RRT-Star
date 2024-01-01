@@ -26,7 +26,7 @@ void ConstraintTable::updateSoftConstraint(int agent_id, Path path) {
     const auto expand_time = time - prev_time;
     if (theta != 0.0) {
       point = make_tuple(get<0>(prev_point) + env.velocities[agent_id] * cos(theta) * expand_time,
-                               get<1>(prev_point) + env.velocities[agent_id] * sin(theta) * expand_time);
+                         get<1>(prev_point) + env.velocities[agent_id] * sin(theta) * expand_time);
     }
     interpolated_path.emplace_back(point, time);
     time += 1.0;
@@ -213,7 +213,7 @@ void ConstraintTable::getSafeIntervalTablePath(int agent_id, const Point& to_poi
 }
 
 void ConstraintTable::getSafeIntervalTable(int agent_id, const Point& to_point, double radius,
-                                                     vector<Interval>& safe_intervals) const {
+                                           vector<Interval>& safe_intervals) const {
   assert(safe_intervals.empty());
   safe_intervals.emplace_back(0.0, numeric_limits<double>::max());
   for (auto [constrained_radius, constrained_path] : hard_constraint_table[agent_id]) {
@@ -260,29 +260,32 @@ void ConstraintTable::getSafeIntervalTable(int agent_id, const Point& to_point, 
 //   return -1;
 // }
 
-double ConstraintTable::getSoftLowerBound(int agent_id, const Point& to_point, double lower_bound, double upper_bound, double radius) const {
-  double soft_lower_bound = lower_bound;
-  while (soft_lower_bound < upper_bound) {
-    bool is_safe = true;
-    for (int other_agent_id = 0; other_agent_id < soft_constraint_table.size(); ++other_agent_id) {
-      if (other_agent_id == agent_id) continue;
-      for (auto [constrained_radius, constrained_path] : soft_constraint_table[other_agent_id]) {
-        for (auto [constrained_point, constrained_time] : constrained_path) {
-          if (constrained_time < soft_lower_bound - env.epsilon) continue;
-          if (constrained_time > upper_bound + env.epsilon) break;
-          if (calculateDistance(constrained_point, to_point) < radius + constrained_radius) {
-            is_safe = false;
-            break;
-          }
-        }
-        if (!is_safe) break;
-      }
-      if (!is_safe) break;
-    }
-    if (is_safe) break;
-    soft_lower_bound += 1.0;
+double ConstraintTable::getEarliestArrivalTime(int agent_id, const Point& from_point, const Point& to_point,
+                                               double expand_time, double lower_bound, double upper_bound,
+                                               double radius) const {
+  double earliest_arrival_time = lower_bound;
+  double from_time = earliest_arrival_time - expand_time;
+  while (earliest_arrival_time < upper_bound) {
+    if (!hardConstrained(agent_id, from_point, to_point, from_time, earliest_arrival_time, radius))
+      return earliest_arrival_time;
+    earliest_arrival_time += 1.0;
+    from_time += 1.0;
   }
-  return soft_lower_bound;
+  return -1.0;
+}
+
+double ConstraintTable::getEarliestArrivalTimeSoft(int agent_id, const Point& from_point, const Point& to_point,
+                                                   double expand_time, double lower_bound, double upper_bound,
+                                                   double radius) const {
+  double earliest_arrival_time = lower_bound;
+  double from_time = earliest_arrival_time - expand_time;
+  while (earliest_arrival_time < upper_bound) {
+    if (!softConstrained(agent_id, from_point, to_point, from_time, earliest_arrival_time, radius))
+      return earliest_arrival_time;
+    earliest_arrival_time += 1.0;
+    from_time += 1.0;
+  }
+  return -1.0;
 }
 
 void ConstraintTable::insertToSafeIntervalTable(vector<Interval>& safe_intervals, double t_min, double t_max) {
