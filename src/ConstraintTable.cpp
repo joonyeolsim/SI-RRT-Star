@@ -2,7 +2,40 @@
 
 void ConstraintTable::updateSoftConstraint(int agent_id, Path path) {
   soft_constraint_table[agent_id].clear();
-  soft_constraint_table[agent_id].emplace_back(env.radii[agent_id], path);
+
+  Path interpolated_path;
+
+  int index = 0;
+  auto [prev_point, prev_time] = path[index];
+  auto [next_point, next_time] = path[index + 1];
+
+  const double max_path_time = get<1>(path.back());
+
+  double time = 0.0;
+  while (time < max_path_time) {
+    if (time >= next_time) {
+      index++;
+      prev_point = get<0>(path[min(static_cast<int>(path.size()) - 1, index)]);
+      prev_time = get<1>(path[min(static_cast<int>(path.size()) - 1, index)]);
+      next_point = get<0>(path[min(static_cast<int>(path.size()) - 1, index + 1)]);
+      next_time = get<1>(path[min(static_cast<int>(path.size()) - 1, index + 1)]);
+    }
+
+    const auto theta = atan2(get<1>(next_point) - get<1>(prev_point), get<0>(next_point) - get<0>(prev_point));
+    auto point = prev_point;
+    const auto expand_time = time - prev_time;
+    if (theta != 0.0) {
+      point = make_tuple(get<0>(prev_point) + env.velocities[agent_id] * cos(theta) * expand_time,
+                               get<1>(prev_point) + env.velocities[agent_id] * sin(theta) * expand_time);
+    }
+    interpolated_path.emplace_back(point, time);
+    time += 1.0;
+  }
+  const double remain_time = fmod(max_path_time, 1.0);
+  if (remain_time > env.epsilon) {
+    interpolated_path.emplace_back(path.back());
+  }
+  soft_constraint_table[agent_id].emplace_back(env.radii[agent_id], interpolated_path);
 }
 
 bool ConstraintTable::obstacleConstrained(int agent_id, const Point& from_point, const Point& to_point,
@@ -82,8 +115,8 @@ bool ConstraintTable::hardConstrained(int agent_id, const Point& from_point, con
   for (auto [constrained_radius, constrained_path] : hard_constraint_table[agent_id]) {
     for (auto [constrained_point, constrained_time] : constrained_path) {
       // check if temporal constraint is satisfied
-      if (constrained_time > to_time - env.epsilon) continue;
-      if (constrained_time < from_time + env.epsilon) break;
+      if (constrained_time < from_time - env.epsilon) continue;
+      if (constrained_time > to_time + env.epsilon) break;
 
       const auto occupied_expand_time = constrained_time - from_time;
       const auto occupied_theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
@@ -104,6 +137,7 @@ bool ConstraintTable::hardConstrained(int agent_id, const Point& from_point, con
 
 bool ConstraintTable::softConstrained(int agent_id, const Point& from_point, const Point& to_point, double from_time,
                                       double to_time, double radius) const {
+  // TODO: thinking about target conflict
   assert(from_time < to_time);
   // vertex-edge conflict
   for (int other_agent_id = 0; other_agent_id < soft_constraint_table.size(); ++other_agent_id) {
@@ -111,9 +145,8 @@ bool ConstraintTable::softConstrained(int agent_id, const Point& from_point, con
     for (auto [constrained_radius, constrained_path] : soft_constraint_table[other_agent_id]) {
       for (auto [constrained_point, constrained_time] : constrained_path) {
         // check if temporal constraint is satisfied
-        cout << constrained_time << endl;
-        if (constrained_time > to_time || fabs(constrained_time - to_time) < env.epsilon) continue;
-        if (constrained_time < from_time || fabs(constrained_time - from_time) < env.epsilon) break;
+        if (constrained_time < from_time - env.epsilon) continue;
+        if (constrained_time > to_time + env.epsilon) break;
 
         const auto occupied_expand_time = constrained_time - from_time;
         const auto occupied_theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
@@ -126,16 +159,6 @@ bool ConstraintTable::softConstrained(int agent_id, const Point& from_point, con
         }
         if (calculateDistance(occupied_point, constrained_point) < radius + constrained_radius) {
           return true;
-        }
-      }
-      // target conflict
-      if (get<1>(constrained_path.back()) < to_time) {
-        vector<Point> interpolated_points;
-        interpolatePoint(agent_id, from_point, to_point, interpolated_points);
-        for (const auto& interpolated_point : interpolated_points) {
-          if (calculateDistance(get<0>(constrained_path.back()), interpolated_point) < radius + constrained_radius) {
-            return true;
-          }
         }
       }
     }
