@@ -14,8 +14,8 @@ class LLNode {
   vector<shared_ptr<LLNode>> children;
   double earliest_arrival_time;
   vector<Interval> intervals;
-  double min_soft_conflict;
-  vector<double> soft_conflicts;
+  int min_soft_conflict;
+  vector<int> soft_conflicts;
   vector<int> parent_interval_indices;
 
   explicit LLNode(Point point)

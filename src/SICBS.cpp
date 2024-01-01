@@ -173,6 +173,7 @@ void SICBS::findConflicts(const Solution& solution, vector<Conflict>& conflicts)
         time += 1.0;
       }
       if (!is_safe) {
+        // TODO: CHECK THIS
         conflicts.emplace_back(agent1_id, agent2_id, make_tuple(partial_path1, partial_path2));
         assert(collision_start_time < time);
       }

@@ -19,8 +19,8 @@ Path SIRRT::run() {
   const auto start_node = make_shared<LLNode>(start_point);
   start_node->earliest_arrival_time = 0.0;
   start_node->intervals = {{0, min(numeric_limits<double>::max(), get<1>(start_safe_intervals[0]))}};
-  start_node->min_soft_conflict = 0.0;
-  start_node->soft_conflicts = {0.0};
+  start_node->min_soft_conflict = 0;
+  start_node->soft_conflicts = {0};
   nodes.push_back(start_node);
 
   // the earliest timestep that the agent can hold its goal location.
@@ -29,6 +29,7 @@ Path SIRRT::run() {
     earliest_goal_arrival_time = max(earliest_goal_arrival_time, get<0>(interval));
   }
 
+  int min_soft_conflict = numeric_limits<int>::max();
   int iteration = env.iterations[agent_id];
   while (iteration--) {
     Point random_point = generateRandomPoint();
@@ -54,8 +55,9 @@ Path SIRRT::run() {
       // SIRRTPP
       for (int i = 0; i < new_node->intervals.size(); ++i) {
         if (get<0>(new_node->intervals[i]) < earliest_goal_arrival_time) continue;
-        if (goal_node == nullptr || new_node->soft_conflicts[i] < goal_node->min_soft_conflict) {
+        if (goal_node == nullptr || new_node->soft_conflicts[i] < min_soft_conflict) {
           goal_node = new_node;
+          min_soft_conflict = new_node->soft_conflicts[i];
         }
       }
     } else {
@@ -180,7 +182,7 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
 
   shared_ptr<LLNode> best_parent = nullptr;
   double best_earliest_arrival_time = numeric_limits<double>::infinity();
-  double best_min_soft_conflict = numeric_limits<double>::infinity();
+  int best_min_soft_conflict = numeric_limits<int>::infinity();
 
   // 이웃 노드들을 순회하면서
   for (const auto& neighbor : neighbors) {
@@ -191,7 +193,7 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
     const double expand_time = calculateDistance(neighbor->point, new_node->point) / env.velocities[agent_id];
     // 이웃 노드로부터 새로운 노드로 갈 때 생기는 변수 초기화
     vector<Interval> candidate_intervals;
-    vector<double> candidate_soft_conflicts;
+    vector<int> candidate_soft_conflicts;
     vector<int> candidate_parent_interval_indices;
 
     // 이웃 노드의 safe interval들을 순회하면서
@@ -242,7 +244,7 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
     if (candidate_intervals.empty()) continue;
 
     double earliest_arrival_time = numeric_limits<double>::infinity();
-    double min_soft_conflict = numeric_limits<double>::infinity();
+    int min_soft_conflict = numeric_limits<int>::infinity();
     for (const auto& interval : candidate_intervals) {
       earliest_arrival_time = min(earliest_arrival_time, get<0>(interval));
     }
@@ -255,6 +257,8 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
       best_parent = neighbor;
       best_earliest_arrival_time = earliest_arrival_time;
       best_min_soft_conflict = min_soft_conflict;
+      new_node->earliest_arrival_time = earliest_arrival_time;
+      new_node->min_soft_conflict = min_soft_conflict;
       new_node->intervals = move(candidate_intervals);
       new_node->soft_conflicts = move(candidate_soft_conflicts);
       new_node->parent_interval_indices = move(candidate_parent_interval_indices);
@@ -266,8 +270,6 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
 
   // new node와 부모 노드 사이에 edge를 생성한다.
   new_node->parent = best_parent;
-  new_node->earliest_arrival_time = best_earliest_arrival_time;
-  new_node->min_soft_conflict = best_min_soft_conflict;
   best_parent->children.emplace_back(new_node);
 
   return true;
@@ -282,7 +284,7 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
     if (constraint_table.obstacleConstrained(agent_id, new_node->point, neighbor->point, env.radii[agent_id])) continue;
 
     const double expand_time = calculateDistance(new_node->point, neighbor->point) / env.velocities[agent_id];
-    vector<double> soft_conflicts;
+    vector<int> soft_conflicts;
     vector<Interval> intervals;
     vector<int> parent_interval_indices;
 
@@ -321,7 +323,7 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
     if (intervals.empty()) continue;
 
     double earliest_arrival_time = numeric_limits<double>::infinity();
-    double min_soft_conflict = numeric_limits<double>::infinity();
+    int min_soft_conflict = numeric_limits<int>::infinity();
     for (const auto& interval : intervals) {
       earliest_arrival_time = min(earliest_arrival_time, get<0>(interval));
     }
@@ -353,12 +355,11 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
 }
 
 void SIRRT::propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeIntervalTable& safe_interval_table) {
-  auto iter = node->children.begin();
-  while (iter != node->children.end()) {
-    const auto& child = *iter;
+  // auto iter = node->children.begin();
+  for (auto& child : node->children) {
     const double expand_time = calculateDistance(node->point, child->point) / env.velocities[agent_id];
     vector<Interval> intervals;
-    vector<double> soft_conflicts;
+    vector<int> soft_conflicts;
     vector<int> parent_interval_indices;
 
     for (int i = 0; i < node->intervals.size(); ++i) {
@@ -395,13 +396,11 @@ void SIRRT::propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeInterva
 
     // 업데이트로 interval이 없어진 child는 삭제한다.
     if (intervals.empty()) {
-      cout << "delete child" << endl;
-      iter = node->children.erase(iter);
       continue;
     }
 
     double earliest_arrival_time = numeric_limits<double>::infinity();
-    double min_soft_conflict = numeric_limits<double>::infinity();
+    int min_soft_conflict = numeric_limits<int>::infinity();
     for (const auto& interval : child->intervals) {
       earliest_arrival_time = min(earliest_arrival_time, get<0>(interval));
     }
