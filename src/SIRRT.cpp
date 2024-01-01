@@ -47,7 +47,7 @@ Path SIRRT::run() {
       continue;
     }
     assert(new_node->parent.lock() != nullptr);
-    rewire(new_node, neighbors, safe_interval_table);
+    // rewire(new_node, neighbors, safe_interval_table);
 
     // check goal
     if (calculateDistance(new_node->point, goal_point) < env.epsilon) {
