@@ -4,9 +4,6 @@ Solution SICBS::run() {
   HLNode root;
   root.constraint_table.resize(env.num_of_robots);
   root.solution = getInitialSolution();
-  for (int i = 0; i < env.num_of_robots; i++) {
-    constraint_table.insertPathToSoftConstraint(i, root.solution[i]);
-  }
   root.cost = calculateCost(root.solution);
   findConflicts(root.solution, root.conflicts);
 
@@ -59,6 +56,7 @@ Solution SICBS::run() {
       // cout << endl;
       new_node.solution[agent_ids[i]] = low_level_planners[agent_ids[i]].run();
       if (new_node.solution[agent_ids[i]].empty()) continue;
+      constraint_table.updateSoftConstraint(i, new_node.solution[agent_ids[i]]);
       // print path
       // cout << "After path" << agent_ids[i] << ": ";
       // for (const auto& state : new_node.solution[agent_ids[i]]) {
@@ -84,6 +82,7 @@ Solution SICBS::getInitialSolution() {
   for (int agent_id = 0; agent_id < env.num_of_robots; ++agent_id) {
     auto path = low_level_planners[agent_id].run();
     solution.emplace_back(path);
+    constraint_table.updateSoftConstraint(agent_id, path);
   }
   return solution;
 }

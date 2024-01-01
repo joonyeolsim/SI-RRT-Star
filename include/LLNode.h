@@ -16,7 +16,7 @@ class LLNode {
   vector<Interval> intervals;
   double min_soft_conflict;
   vector<double> soft_conflicts;
-  vector<int> parent_interval_indicies;
+  vector<int> parent_interval_indices;
 
   explicit LLNode(Point point)
       : point(std::move(point)),

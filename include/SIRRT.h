@@ -43,7 +43,7 @@ class SIRRT {
   Path updatePath(const shared_ptr<LLNode>& goal_node, const int interval_index) const;
   void getNeighbors(const shared_ptr<LLNode>& new_node, vector<shared_ptr<LLNode>>& neighbors) const;
   bool chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
-                    SafeIntervalTable& safe_interval_table);
+                    SafeIntervalTable& safe_interval_table) const;
   void rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
               SafeIntervalTable& safe_interval_table);
   void propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeIntervalTable& safe_interval_table);

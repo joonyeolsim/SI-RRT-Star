@@ -1,6 +1,7 @@
 #include "ConstraintTable.h"
 
-void ConstraintTable::insertPathToSoftConstraint(int agent_id, Path path) {
+void ConstraintTable::updateSoftConstraint(int agent_id, Path path) {
+  soft_constraint_table[agent_id].clear();
   soft_constraint_table[agent_id].emplace_back(env.radii[agent_id], path);
 }
 
@@ -74,7 +75,7 @@ bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, con
   return false;
 }
 
-bool ConstraintTable::constrained(int agent_id, const Point& from_point, const Point& to_point, double from_time,
+bool ConstraintTable::hardConstrained(int agent_id, const Point& from_point, const Point& to_point, double from_time,
                                   double to_time, double radius) const {
   assert(from_time < to_time);
   // vertex-edge conflict
