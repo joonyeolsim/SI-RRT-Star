@@ -24,20 +24,20 @@ class LLNode {
         min_soft_conflict(numeric_limits<double>::infinity()) {}
 
   // compare node by earliest_arrival_time
-  // bool operator<(const LLNode& other) const {
-  //   if (earliest_arrival_time == other.earliest_arrival_time) {
-  //     return min_soft_conflict < other.min_soft_conflict;
-  //   }
-  //   return earliest_arrival_time < other.earliest_arrival_time;
-  // }
+  bool operator<(const LLNode& other) const {
+    if (earliest_arrival_time == other.earliest_arrival_time) {
+      return min_soft_conflict < other.min_soft_conflict;
+    }
+    return earliest_arrival_time < other.earliest_arrival_time;
+  }
 
   // compare node by min soft conflict
-  bool operator<(const LLNode& other) const {
-    if (min_soft_conflict == other.min_soft_conflict) {
-      return earliest_arrival_time < other.earliest_arrival_time;
-    }
-    return min_soft_conflict < other.min_soft_conflict;
-  }
+  // bool operator<(const LLNode& other) const {
+  //   if (min_soft_conflict == other.min_soft_conflict) {
+  //     return earliest_arrival_time < other.earliest_arrival_time;
+  //   }
+  //   return min_soft_conflict < other.min_soft_conflict;
+  // }
 };
 
 #endif  // LLNODE_H

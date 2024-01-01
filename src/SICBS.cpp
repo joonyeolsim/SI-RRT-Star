@@ -46,19 +46,19 @@ Solution SICBS::run() {
       new_node.constraint_table[agent_ids[i]].emplace_back(env.radii[agent_ids[j]], partial_paths[j]);
       constraint_table.hard_constraint_table = new_node.constraint_table;
 
-      // pruning nodes
-      // update safe intervals
-
-      // find new solution satisfying constraints
+      // print after path
       // cout << "Before path" << agent_ids[i] << ": ";
       // for (const auto& state : new_node.solution[agent_ids[i]]) {
       //   cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
       // }
       // cout << endl;
+
+      // update path
       new_node.solution[agent_ids[i]] = low_level_planners[agent_ids[i]].run();
       if (new_node.solution[agent_ids[i]].empty()) continue;
       constraint_table.updateSoftConstraint(i, new_node.solution[agent_ids[i]]);
-      // print path
+
+      // print after path
       // cout << "After path" << agent_ids[i] << ": ";
       // for (const auto& state : new_node.solution[agent_ids[i]]) {
       //   cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
