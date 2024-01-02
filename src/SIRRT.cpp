@@ -29,7 +29,7 @@ Path SIRRT::run() {
     earliest_goal_arrival_time = max(earliest_goal_arrival_time, get<0>(interval));
   }
 
-  int best_earliest_arrival_time = numeric_limits<int>::max();
+  double best_earliest_arrival_time = numeric_limits<double>::infinity();
   int best_min_soft_conflict = numeric_limits<int>::max();
   int best_interval_index = -1;
   int iteration = env.iterations[agent_id];
@@ -50,7 +50,7 @@ Path SIRRT::run() {
       continue;
     }
     assert(new_node->parent.lock() != nullptr);
-    // rewire(new_node, neighbors, safe_interval_table);
+    rewire(new_node, neighbors, safe_interval_table);
 
     // check goal
     if (calculateDistance(new_node->point, goal_point) < env.epsilon) {
@@ -220,35 +220,35 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
         if (lower_bound >= get<1>(safe_interval)) continue;
         if (upper_bound <= get<0>(safe_interval)) break;
 
-        // new node로의 도착 시간은 safe interval의 시작 시간과 lower bound 중 큰 값
-        const double to_time = max(get<0>(safe_interval), lower_bound);
-        // 속도가 일정하기에 출발 시간은 도착 시간에서 이동 시간을 빼준 값
-        // 즉, 바로 이동할 수 없을 때 에이전트는 기다려야 한다.
         const double earliest_arrival_time = constraint_table.getEarliestArrivalTime(
-            agent_id, neighbor->point, new_node->point, expand_time, to_time, upper_bound, env.radii[agent_id]);
-        if (earliest_arrival_time == -1.0) continue;
+            agent_id, neighbor->point, new_node->point, expand_time, max(get<0>(safe_interval), lower_bound),
+            min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
+        if (earliest_arrival_time < 0.0) continue;
 
         // new node로의 이동이 soft constraint를 위반한다면 soft_conflict를 1 증가시킨다.
         const double earliest_arrival_time_soft = constraint_table.getEarliestArrivalTimeSoft(
-            agent_id, neighbor->point, new_node->point, expand_time, to_time, upper_bound, env.radii[agent_id]);
-        if (earliest_arrival_time_soft != -1.0 && earliest_arrival_time_soft > earliest_arrival_time) {
+            agent_id, neighbor->point, new_node->point, expand_time, earliest_arrival_time,
+            min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
+        if (earliest_arrival_time == earliest_arrival_time_soft) {
+          // no collision
+          candidate_intervals.emplace_back(earliest_arrival_time, get<1>(safe_interval));
+          candidate_soft_conflicts.emplace_back(neighbor->soft_conflicts[i]);
+          candidate_parent_interval_indices.emplace_back(i);
+        } else if (earliest_arrival_time_soft < 0.0) {
+          // all collision
+          candidate_intervals.emplace_back(earliest_arrival_time, get<1>(safe_interval));
+          candidate_soft_conflicts.emplace_back(neighbor->soft_conflicts[i] + 1);
+          candidate_parent_interval_indices.emplace_back(i);
+        } else {
+          // collision
           candidate_intervals.emplace_back(earliest_arrival_time, earliest_arrival_time_soft);
           candidate_soft_conflicts.emplace_back(neighbor->soft_conflicts[i] + 1);
           candidate_parent_interval_indices.emplace_back(i);
 
-          candidate_intervals.emplace_back(earliest_arrival_time_soft, min(get<1>(safe_interval), upper_bound));
+          // no collision
+          candidate_intervals.emplace_back(earliest_arrival_time_soft, get<1>(safe_interval));
           candidate_soft_conflicts.emplace_back(neighbor->soft_conflicts[i]);
           candidate_parent_interval_indices.emplace_back(i);
-        } else {
-          if (earliest_arrival_time_soft == -1.0) {
-            candidate_intervals.emplace_back(earliest_arrival_time, min(get<1>(safe_interval), upper_bound));
-            candidate_soft_conflicts.emplace_back(neighbor->soft_conflicts[i] + 1);
-            candidate_parent_interval_indices.emplace_back(i);
-          } else {
-            candidate_intervals.emplace_back(earliest_arrival_time, min(get<1>(safe_interval), upper_bound));
-            candidate_soft_conflicts.emplace_back(neighbor->soft_conflicts[i]);
-            candidate_parent_interval_indices.emplace_back(i);
-          }
         }
       }
     }
@@ -318,34 +318,38 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
         if (lower_bound >= get<1>(safe_interval)) continue;
         if (upper_bound <= get<0>(safe_interval)) break;
 
-        // check move constraint
-        const double to_time = max(get<0>(safe_interval), lower_bound);
-
         const double earliest_arrival_time = constraint_table.getEarliestArrivalTime(
-            agent_id, new_node->point, neighbor->point, expand_time, to_time, upper_bound, env.radii[agent_id]);
-        if (earliest_arrival_time == -1.0) continue;
+            agent_id, new_node->point, neighbor->point, expand_time, max(get<0>(safe_interval), lower_bound),
+            min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
+        if (earliest_arrival_time < 0.0) continue;
 
         const double earliest_arrival_time_soft = constraint_table.getEarliestArrivalTimeSoft(
-            agent_id, new_node->point, neighbor->point, expand_time, to_time, upper_bound, env.radii[agent_id]);
-
-        if (earliest_arrival_time_soft != -1.0 && earliest_arrival_time_soft > earliest_arrival_time) {
-          candidate_intervals.emplace_back(earliest_arrival_time, earliest_arrival_time_soft);
-          candidate_soft_conflicts.emplace_back(neighbor->soft_conflicts[i] + 1);
+            agent_id, new_node->point, neighbor->point, expand_time, earliest_arrival_time,
+            min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
+        if (earliest_arrival_time == earliest_arrival_time_soft) {
+          // no collision
+          candidate_intervals.emplace_back(earliest_arrival_time, get<1>(safe_interval));
+          candidate_soft_conflicts.emplace_back(new_node->soft_conflicts[i]);
           candidate_parent_interval_indices.emplace_back(i);
-
-          candidate_intervals.emplace_back(earliest_arrival_time_soft, min(get<1>(safe_interval), upper_bound));
-          candidate_soft_conflicts.emplace_back(neighbor->soft_conflicts[i]);
+          assert(new_node->soft_conflicts[i] >= 0);
+        } else if (earliest_arrival_time_soft < 0.0) {
+          // all collision
+          candidate_intervals.emplace_back(earliest_arrival_time, get<1>(safe_interval));
+          candidate_soft_conflicts.emplace_back(new_node->soft_conflicts[i] + 1);
           candidate_parent_interval_indices.emplace_back(i);
+          assert(new_node->soft_conflicts[i] + 1 >= 0);
         } else {
-          if (earliest_arrival_time_soft == -1.0) {
-            candidate_intervals.emplace_back(earliest_arrival_time, min(get<1>(safe_interval), upper_bound));
-            candidate_soft_conflicts.emplace_back(neighbor->soft_conflicts[i] + 1);
-            candidate_parent_interval_indices.emplace_back(i);
-          } else {
-            candidate_intervals.emplace_back(earliest_arrival_time, min(get<1>(safe_interval), upper_bound));
-            candidate_soft_conflicts.emplace_back(neighbor->soft_conflicts[i]);
-            candidate_parent_interval_indices.emplace_back(i);
-          }
+          // collision
+          candidate_intervals.emplace_back(earliest_arrival_time, earliest_arrival_time_soft);
+          candidate_soft_conflicts.emplace_back(new_node->soft_conflicts[i] + 1);
+          candidate_parent_interval_indices.emplace_back(i);
+          assert(new_node->soft_conflicts[i] + 1 >= 0);
+
+          // no collision
+          candidate_intervals.emplace_back(earliest_arrival_time_soft, get<1>(safe_interval));
+          candidate_soft_conflicts.emplace_back(new_node->soft_conflicts[i]);
+          candidate_parent_interval_indices.emplace_back(i);
+          assert(new_node->soft_conflicts[i] >= 0);
         }
       }
     }
@@ -422,32 +426,38 @@ void SIRRT::propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeInterva
         if (lower_bound >= get<1>(safe_interval)) continue;
         if (upper_bound <= get<0>(safe_interval)) break;
 
-        const double to_time = max(get<0>(safe_interval), lower_bound);
-
         const double earliest_arrival_time = constraint_table.getEarliestArrivalTime(
-            agent_id, node->point, child->point, expand_time, to_time, upper_bound, env.radii[agent_id]);
-        if (earliest_arrival_time == -1.0) continue;
+            agent_id, node->point, child->point, expand_time, max(get<0>(safe_interval), lower_bound),
+            min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
+        if (earliest_arrival_time < 0.0) continue;
 
         const double earliest_arrival_time_soft = constraint_table.getEarliestArrivalTimeSoft(
-            agent_id, node->point, child->point, expand_time, to_time, upper_bound, env.radii[agent_id]);
-        if (earliest_arrival_time_soft != -1.0 && earliest_arrival_time_soft > earliest_arrival_time) {
+            agent_id, node->point, child->point, expand_time, earliest_arrival_time,
+            min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
+        if (earliest_arrival_time == earliest_arrival_time_soft) {
+          // no collision
+          intervals.emplace_back(earliest_arrival_time, get<1>(safe_interval));
+          soft_conflicts.emplace_back(node->soft_conflicts[i]);
+          parent_interval_indices.emplace_back(i);
+          assert(node->soft_conflicts[i] >= 0);
+        } else if (earliest_arrival_time_soft < 0.0) {
+          // all collision
+          intervals.emplace_back(earliest_arrival_time, get<1>(safe_interval));
+          soft_conflicts.emplace_back(node->soft_conflicts[i] + 1);
+          parent_interval_indices.emplace_back(i);
+          assert(node->soft_conflicts[i] + 1 >= 0);
+        } else {
+          // collision
           intervals.emplace_back(earliest_arrival_time, earliest_arrival_time_soft);
           soft_conflicts.emplace_back(node->soft_conflicts[i] + 1);
           parent_interval_indices.emplace_back(i);
+          assert(node->soft_conflicts[i] + 1 >= 0);
 
-          intervals.emplace_back(earliest_arrival_time_soft, min(get<1>(safe_interval), upper_bound));
+          // no collision
+          intervals.emplace_back(earliest_arrival_time_soft, get<1>(safe_interval));
           soft_conflicts.emplace_back(node->soft_conflicts[i]);
           parent_interval_indices.emplace_back(i);
-        } else {
-          if (earliest_arrival_time_soft == -1.0) {
-            intervals.emplace_back(earliest_arrival_time, min(get<1>(safe_interval), upper_bound));
-            soft_conflicts.emplace_back(node->soft_conflicts[i] + 1);
-            parent_interval_indices.emplace_back(i);
-          } else {
-            intervals.emplace_back(earliest_arrival_time, min(get<1>(safe_interval), upper_bound));
-            soft_conflicts.emplace_back(node->soft_conflicts[i]);
-            parent_interval_indices.emplace_back(i);
-          }
+          assert(node->soft_conflicts[i] >= 0);
         }
       }
     }
