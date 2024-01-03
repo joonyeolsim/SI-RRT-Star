@@ -16,7 +16,9 @@ class LLNode {
   int num_of_soft_conflicts{};
 
   explicit LLNode(Point point)
-      : point(std::move(point)), interval(0, numeric_limits<double>::infinity()), num_of_soft_conflicts(0) {}
+      : point(std::move(point)),
+        interval(0, numeric_limits<double>::infinity()),
+        num_of_soft_conflicts(numeric_limits<int>::max()) {}
 
   // compare node by earliest_arrival_time
   bool operator<(const LLNode& other) const {

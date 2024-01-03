@@ -25,16 +25,16 @@ Solution SICBS::run() {
     const auto partial_path2 = get<1>(get<2>(conflict));
     cout << "Interval : " << get<1>(partial_path1.front()) << " ~ " << get<1>(partial_path1.back()) << endl;
     // // print partial path
-    // cout << "partial path" << agent_ids[0] << " : ";
-    // for (const auto& state : partial_path1) {
-    //   cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
-    // }
-    // cout << endl;
-    // cout << "partial path" << agent_ids[1] << " : ";
-    // for (const auto& state : partial_path2) {
-    //   cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
-    // }
-    // cout << endl;
+    cout << "partial path" << agent_ids[0] << " : ";
+    for (const auto& state : partial_path1) {
+      cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
+    }
+    cout << endl;
+    cout << "partial path" << agent_ids[1] << " : ";
+    for (const auto& state : partial_path2) {
+      cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
+    }
+    cout << endl;
     vector<Path> partial_paths = {partial_path1, partial_path2};
     for (int i = 0; i < agent_ids.size(); i++) {
       const int j = (i + 1) % 2;
@@ -56,7 +56,7 @@ Solution SICBS::run() {
       // update path
       new_node.solution[agent_ids[i]] = low_level_planners[agent_ids[i]].run();
       if (new_node.solution[agent_ids[i]].empty()) continue;
-      // constraint_table.updateSoftConstraint(i, new_node.solution[agent_ids[i]]);
+      constraint_table.updateSoftConstraint(i, new_node.solution[agent_ids[i]]);
 
       // print after path`
       // cout << "After path" << agent_ids[i] << ": ";
@@ -86,7 +86,7 @@ Solution SICBS::getInitialSolution() {
   for (int agent_id = 0; agent_id < env.num_of_robots; ++agent_id) {
     auto path = low_level_planners[agent_id].run();
     solution.emplace_back(path);
-    // constraint_table.updateSoftConstraint(agent_id, path);
+    constraint_table.updateSoftConstraint(agent_id, path);
   }
   return solution;
 }
