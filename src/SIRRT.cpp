@@ -58,18 +58,19 @@ Path SIRRT::run() {
       for (int i = 0; i < new_node->intervals.size(); ++i) {
         // target hard constraint
         if (get<0>(new_node->intervals[i]) < earliest_goal_arrival_time) continue;
-        if (goal_node == nullptr || new_node->soft_conflicts[i] < best_min_soft_conflict) {
-          goal_node = new_node;
-          best_earliest_arrival_time = get<0>(new_node->intervals[i]);
-          best_min_soft_conflict = new_node->soft_conflicts[i];
-          best_interval_index = i;
-        }
-        // if (goal_node == nullptr || get<0>(new_node->intervals[i]) < best_earliest_arrival_time) {
+        // if (goal_node == nullptr || new_node->soft_conflicts[i] < best_min_soft_conflict) {
         //   goal_node = new_node;
         //   best_earliest_arrival_time = get<0>(new_node->intervals[i]);
         //   best_min_soft_conflict = new_node->soft_conflicts[i];
         //   best_interval_index = i;
         // }
+        if (goal_node == nullptr || get<0>(new_node->intervals[i]) < best_earliest_arrival_time) {
+          goal_node = new_node;
+          best_earliest_arrival_time = get<0>(new_node->intervals[i]);
+          best_min_soft_conflict = new_node->soft_conflicts[i];
+          best_interval_index = i;
+          // TODO: interval이 rewire로 사라질 경우.
+        }
       }
     } else {
       nodes.push_back(new_node);
@@ -266,15 +267,7 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
     }
 
     // update if new_node is better than neighbor
-    if (best_parent == nullptr || min_soft_conflict < new_node->min_soft_conflict) {
-      best_parent = neighbor;
-      new_node->earliest_arrival_time = earliest_arrival_time;
-      new_node->min_soft_conflict = min_soft_conflict;
-      new_node->intervals = move(candidate_intervals);
-      new_node->soft_conflicts = move(candidate_soft_conflicts);
-      new_node->parent_interval_indices = move(candidate_parent_interval_indices);
-    }
-    // if (best_parent == nullptr || earliest_arrival_time < new_node->earliest_arrival_time) {
+    // if (best_parent == nullptr || min_soft_conflict < new_node->min_soft_conflict) {
     //   best_parent = neighbor;
     //   new_node->earliest_arrival_time = earliest_arrival_time;
     //   new_node->min_soft_conflict = min_soft_conflict;
@@ -282,6 +275,14 @@ bool SIRRT::chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared
     //   new_node->soft_conflicts = move(candidate_soft_conflicts);
     //   new_node->parent_interval_indices = move(candidate_parent_interval_indices);
     // }
+    if (best_parent == nullptr || earliest_arrival_time < new_node->earliest_arrival_time) {
+      best_parent = neighbor;
+      new_node->earliest_arrival_time = earliest_arrival_time;
+      new_node->min_soft_conflict = min_soft_conflict;
+      new_node->intervals = move(candidate_intervals);
+      new_node->soft_conflicts = move(candidate_soft_conflicts);
+      new_node->parent_interval_indices = move(candidate_parent_interval_indices);
+    }
   }
 
   // 만약 parent node가 nullptr이라면 그 어떠한 이웃 노드로부터도 새로운 노드로 갈 수 없다.
@@ -366,26 +367,7 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
     }
 
     // update if new_node is better than neighbor
-    if (min_soft_conflict < neighbor->min_soft_conflict) {
-      neighbor->earliest_arrival_time = earliest_arrival_time;
-      neighbor->min_soft_conflict = min_soft_conflict;
-      neighbor->intervals = move(candidate_intervals);
-      neighbor->soft_conflicts = move(candidate_soft_conflicts);
-      neighbor->parent_interval_indices = move(candidate_parent_interval_indices);
-      // update parent
-      auto old_parent = neighbor->parent.lock();
-      if (old_parent) {
-        old_parent->children.erase(remove(old_parent->children.begin(), old_parent->children.end(), neighbor),
-                                   old_parent->children.end());
-      }
-
-      neighbor->parent = new_node;
-      new_node->children.emplace_back(neighbor);
-      propagateCostToSuccessor(neighbor, safe_interval_table);
-      assert(neighbor->earliest_arrival_time - new_node->earliest_arrival_time >= 0);
-      assert(neighbor->min_soft_conflict - new_node->min_soft_conflict >= 0);
-    }
-    // if (earliest_arrival_time < neighbor->earliest_arrival_time) {
+    // if (min_soft_conflict < neighbor->min_soft_conflict) {
     //   neighbor->earliest_arrival_time = earliest_arrival_time;
     //   neighbor->min_soft_conflict = min_soft_conflict;
     //   neighbor->intervals = move(candidate_intervals);
@@ -404,6 +386,25 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
     //   assert(neighbor->earliest_arrival_time - new_node->earliest_arrival_time >= 0);
     //   assert(neighbor->min_soft_conflict - new_node->min_soft_conflict >= 0);
     // }
+    if (earliest_arrival_time < neighbor->earliest_arrival_time) {
+      neighbor->earliest_arrival_time = earliest_arrival_time;
+      neighbor->min_soft_conflict = min_soft_conflict;
+      neighbor->intervals = move(candidate_intervals);
+      neighbor->soft_conflicts = move(candidate_soft_conflicts);
+      neighbor->parent_interval_indices = move(candidate_parent_interval_indices);
+      // update parent
+      auto old_parent = neighbor->parent.lock();
+      if (old_parent) {
+        old_parent->children.erase(remove(old_parent->children.begin(), old_parent->children.end(), neighbor),
+                                   old_parent->children.end());
+      }
+
+      neighbor->parent = new_node;
+      new_node->children.emplace_back(neighbor);
+      propagateCostToSuccessor(neighbor, safe_interval_table);
+      assert(neighbor->earliest_arrival_time - new_node->earliest_arrival_time >= 0);
+      assert(neighbor->min_soft_conflict - new_node->min_soft_conflict >= 0);
+    }
   }
 }
 
@@ -485,6 +486,7 @@ void SIRRT::propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeInterva
     child->parent_interval_indices = move(parent_interval_indices);
 
     propagateCostToSuccessor(child, safe_interval_table);
+    ++iter;
   }
 }
 

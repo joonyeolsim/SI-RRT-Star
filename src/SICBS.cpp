@@ -56,9 +56,9 @@ Solution SICBS::run() {
       // update path
       new_node.solution[agent_ids[i]] = low_level_planners[agent_ids[i]].run();
       if (new_node.solution[agent_ids[i]].empty()) continue;
-      constraint_table.updateSoftConstraint(i, new_node.solution[agent_ids[i]]);
+      // constraint_table.updateSoftConstraint(i, new_node.solution[agent_ids[i]]);
 
-      // print after path
+      // print after path`
       // cout << "After path" << agent_ids[i] << ": ";
       // for (const auto& state : new_node.solution[agent_ids[i]]) {
       //   cout << "(" << get<0>(get<0>(state)) << ", " << get<1>(get<0>(state)) << ", " << get<1>(state) << ")->";
@@ -70,6 +70,9 @@ Solution SICBS::run() {
       new_node.conflicts.clear();
       findConflicts(new_node.solution, new_node.conflicts);
 
+      // if (new_node.conflicts.size() > curr_node.conflicts.size()) {
+      //   continue;
+      // }
       // push new node to open list
       open_list.push(new_node);
     }
@@ -83,7 +86,7 @@ Solution SICBS::getInitialSolution() {
   for (int agent_id = 0; agent_id < env.num_of_robots; ++agent_id) {
     auto path = low_level_planners[agent_id].run();
     solution.emplace_back(path);
-    constraint_table.updateSoftConstraint(agent_id, path);
+    // constraint_table.updateSoftConstraint(agent_id, path);
   }
   return solution;
 }
