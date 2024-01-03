@@ -227,6 +227,7 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
                    SafeIntervalTable& safe_interval_table) {
   assert(!neighbors.empty());
   for (auto& neighbor : neighbors) {
+    cout << get<0>(neighbor->point) << " " << get<1>(neighbor->point) << endl;
     // 만약 neighbor가 new_node의 부모라면 continue
     if (neighbor == new_node->parent.lock()) continue;
 
@@ -266,64 +267,79 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
             neighbor->parent.lock()->children.end());
         neighbor->parent = new_node;
         new_node->children.emplace_back(neighbor);
-        // propagateCostToSuccessor(neighbor, safe_interval_table);
+        propagateCostToSuccessor(neighbor, safe_interval_table);
+        break;
       }
     }
   }
 }
 
-// void SIRRT::propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeIntervalTable& safe_interval_table) {
-//   auto iter = node->children.begin();
-//   while (iter != node->children.end()) {
-//     auto child = *iter;
-//
-//     // 만약 부모 노드로부터 자식 노드로 갈 때 정적인 장애물과 충돌한다면 child는 삭제한다.
-//     if (constraint_table.obstacleConstrained(agent_id, node->point, child->point, env.radii[agent_id])) {
-//       child->parent.reset();
-//       iter = node->children.erase(iter);
-//       continue;
-//     }
-//
-//     // 부모 노드로부터 자식 노드로 갈 때 이동하는 시간
-//     const double expand_time = calculateDistance(node->point, child->point) / env.velocities[agent_id];
-//
-//     // 부모 노드로부터 자식 노드로 갈 때의 lower bound와 upper bound
-//     const double lower_bound = get<0>(node->interval) + expand_time;
-//     const double upper_bound = get<1>(node->interval) + expand_time;
-//     assert(lower_bound > 0);
-//     assert(lower_bound < upper_bound);
-//
-//     // child의 safe interval들을 순회하면서
-//     bool updated = false;
-//     auto safe_intervals = safe_interval_table.table[child->point];
-//     for (auto& safe_interval : safe_intervals) {
-//       // lower bound와 upper bound가 safe interval과 겹치지 않는다면 continue
-//       if (lower_bound >= get<1>(safe_interval)) continue;
-//       if (upper_bound <= get<0>(safe_interval)) break;
-//
-//       // node로부터 child로 갈 때의 가장 빠른 도착 시간을 구한다.
-//       // 가장 빠른 도착 시간이란 node로부터 child로 갈 때 hard constraint와 충돌하지 않는 가장 빠른 시간을 의미한다.
-//       const double earliest_arrival_time = constraint_table.getEarliestArrivalTime(
-//           agent_id, node->point, child->point, expand_time, max(get<0>(safe_interval), lower_bound),
-//           min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
-//       if (earliest_arrival_time < 0.0) continue;
-//
-//       child->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
-//       child->num_of_soft_conflicts = node->num_of_soft_conflicts;
-//       updated = true;
-//     }
-//
-//     // 업데이트로 interval이 없어진 child는 삭제한다.
-//     if (!updated) {
-//       child->parent.reset();
-//       iter = node->children.erase(iter);
-//       continue;
-//     }
-//
-//     propagateCostToSuccessor(child, safe_interval_table);
-//     ++iter;
-//   }
-// }
+void SIRRT::propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeIntervalTable& safe_interval_table) {
+  auto children = node->children;
+  for (auto& child : children) {
+    // 만약 부모 노드로부터 자식 노드로 갈 때 정적인 장애물과 충돌한다면 child는 삭제한다.
+    if (constraint_table.obstacleConstrained(agent_id, node->point, child->point, env.radii[agent_id])) {
+      pruneNode(child);
+      continue;
+    }
+
+    // 부모 노드로부터 자식 노드로 갈 때 이동하는 시간
+    const double expand_time = calculateDistance(node->point, child->point) / env.velocities[agent_id];
+
+    // 부모 노드로부터 자식 노드로 갈 때의 lower bound와 upper bound
+    const double lower_bound = get<0>(node->interval) + expand_time;
+    const double upper_bound = get<1>(node->interval) + expand_time;
+    assert(lower_bound > 0);
+    assert(lower_bound < upper_bound);
+
+    // child의 safe interval들을 순회하면서
+    bool updated = false;
+    auto safe_intervals = safe_interval_table.table[child->point];
+    for (auto& safe_interval : safe_intervals) {
+      // lower bound와 upper bound가 safe interval과 겹치지 않는다면 continue
+      if (lower_bound >= get<1>(safe_interval)) continue;
+      if (upper_bound <= get<0>(safe_interval)) break;
+
+      // node로부터 child로 갈 때의 가장 빠른 도착 시간을 구한다.
+      // 가장 빠른 도착 시간이란 node로부터 child로 갈 때 hard constraint와 충돌하지 않는 가장 빠른 시간을 의미한다.
+      const double earliest_arrival_time = constraint_table.getEarliestArrivalTime(
+          agent_id, node->point, child->point, expand_time, max(get<0>(safe_interval), lower_bound),
+          min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
+      if (earliest_arrival_time < 0.0) {
+        continue;
+      }
+
+      child->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
+      updated = true;
+      break;
+    }
+
+    // 업데이트로 interval이 없어진 child는 삭제한다.
+    if (!updated) {
+      pruneNode(child);
+    } else {
+      propagateCostToSuccessor(child, safe_interval_table);
+    }
+  }
+}
+
+void SIRRT::pruneNode(shared_ptr<LLNode>& node) {
+  cout << "Pruning node: " << get<0>(node->point) << " " << get<1>(node->point) << endl;
+  while (!node->children.empty()) {
+    auto child = node->children.back();
+    node->children.pop_back();
+    pruneNode(child);
+  }
+  const auto parentPtr = node->parent.lock();
+  assert(parentPtr != nullptr);
+  parentPtr->children.erase(remove(parentPtr->children.begin(), parentPtr->children.end(), node),
+                            parentPtr->children.end());
+  node->parent.reset();
+  const auto node_iter = find(nodes.begin(), nodes.end(), node);
+  if (node_iter != nodes.end()) {
+    nodes.erase(node_iter);
+  }
+}
 
 void SIRRT::release() {
   nodes.clear();
