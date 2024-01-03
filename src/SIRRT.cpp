@@ -40,31 +40,29 @@ Path SIRRT::run() {
     vector<shared_ptr<LLNode>> neighbors;
     getNeighbors(new_point, neighbors);
     assert(!neighbors.empty());
-    auto new_nodes = chooseParent(new_point, neighbors, safe_interval_table);
-    if (new_nodes.empty()) {
+    shared_ptr<LLNode> new_node = chooseParent(new_point, neighbors, safe_interval_table);
+    if (new_node == nullptr) {
       continue;
     }
-    // rewire(new_node, neighbors, safe_interval_table);
+    rewire(new_node, neighbors, safe_interval_table);
 
     // check goal
-    for (auto& new_node : new_nodes) {
-      if (calculateDistance(new_node->point, goal_point) < env.epsilon) {
-        if (get<0>(new_node->interval) < earliest_goal_arrival_time) continue;
-        // if (goal_node == nullptr || new_node->soft_conflicts[i] < best_min_soft_conflict) {
-        //   goal_node = new_node;
-        //   best_earliest_arrival_time = get<0>(new_node->intervals[i]);
-        //   best_min_soft_conflict = new_node->soft_conflicts[i];
-        //   best_interval_index = i;
-        // }
-        if (goal_node == nullptr || get<0>(new_node->interval) < best_earliest_arrival_time) {
-          goal_node = new_node;
-          best_earliest_arrival_time = get<0>(new_node->interval);
-          best_num_of_soft_conflicts = new_node->num_of_soft_conflicts;
-          // TODO: interval이 rewire로 사라질 경우.
-        }
-      } else {
-        nodes.push_back(new_node);
+    if (calculateDistance(new_node->point, goal_point) < env.epsilon) {
+      if (get<0>(new_node->interval) < earliest_goal_arrival_time) continue;
+      // if (goal_node == nullptr || new_node->soft_conflicts[i] < best_min_soft_conflict) {
+      //   goal_node = new_node;
+      //   best_earliest_arrival_time = get<0>(new_node->intervals[i]);
+      //   best_min_soft_conflict = new_node->soft_conflicts[i];
+      //   best_interval_index = i;
+      // }
+      if (goal_node == nullptr || get<0>(new_node->interval) < best_earliest_arrival_time) {
+        goal_node = new_node;
+        best_earliest_arrival_time = get<0>(new_node->interval);
+        best_num_of_soft_conflicts = new_node->num_of_soft_conflicts;
+        // TODO: interval이 rewire로 사라질 경우.
       }
+    } else {
+      nodes.push_back(new_node);
     }
   }
 
@@ -83,7 +81,7 @@ Path SIRRT::run() {
     return path;
   }
 
-  cout << "No solution found!" << endl;
+  cout << "No path found!" << endl;
   return path;
 }
 
@@ -174,16 +172,13 @@ void SIRRT::getNeighbors(Point point, vector<shared_ptr<LLNode>>& neighbors) con
   }
 }
 
-vector<shared_ptr<LLNode>> SIRRT::chooseParent(const Point& new_point, const vector<shared_ptr<LLNode>>& neighbors,
-                                               SafeIntervalTable& safe_interval_table) const {
+shared_ptr<LLNode> SIRRT::chooseParent(const Point& new_point, const vector<shared_ptr<LLNode>>& neighbors,
+                                       SafeIntervalTable& safe_interval_table) const {
   assert(!neighbors.empty());
 
-  shared_ptr<LLNode> best_parent = nullptr;
-  double best_earliest_arrival_time = numeric_limits<double>::infinity();
-  double best_num_of_soft_conflicts = numeric_limits<int>::max();
-  vector<shared_ptr<LLNode>> best_new_nodes;
+  shared_ptr<LLNode> new_node = make_shared<LLNode>(new_point);
 
-  // 이웃 노드들을 순회하면서 가장 낮은 earliest arrival time을 가지는 이웃을 찾는다.
+  // 이웃 노드들을 순회하면서 to point로 갈 수 있는 가장 낮은 earliest arrival time을 가지는 이웃을 찾는다.
   for (const auto& neighbor : neighbors) {
     // 만약 이웃 노드로부터 새로운 노드로 갈 때 정적인 장애물과 충돌한다면 continue
     if (constraint_table.obstacleConstrained(agent_id, neighbor->point, new_point, env.radii[agent_id])) continue;
@@ -191,14 +186,12 @@ vector<shared_ptr<LLNode>> SIRRT::chooseParent(const Point& new_point, const vec
     // 이웃 노드로부터 새로운 노드로 갈 때 이동하는 시간
     const double expand_time = calculateDistance(neighbor->point, new_point) / env.velocities[agent_id];
 
-    // 이웃 노드의 safe interval들을 순회하면서
     // 이웃 노드로부터 새로운 노드로 갈 때의 lower bound와 upper bound
     const double lower_bound = get<0>(neighbor->interval) + expand_time;
     const double upper_bound = get<1>(neighbor->interval) + expand_time;
     assert(lower_bound > 0);
     assert(lower_bound < upper_bound);
 
-    vector<shared_ptr<LLNode>> new_nodes;
     // new node의 safe interval들을 순회하면서
     auto safe_intervals = safe_interval_table.table[new_point];
     for (auto& safe_interval : safe_intervals) {
@@ -206,251 +199,159 @@ vector<shared_ptr<LLNode>> SIRRT::chooseParent(const Point& new_point, const vec
       if (lower_bound >= get<1>(safe_interval)) continue;
       if (upper_bound <= get<0>(safe_interval)) break;
 
+      // neighbor노드로부터 new node로 갈 때의 가장 빠른 도착 시간을 구한다.
+      // 가장 빠른 도착 시간이란 neighbor노드로부터 new node로 갈 때 hard constraint와 충돌하지 않는 가장 빠른 시간을
+      // 의미한다.
       const double earliest_arrival_time = constraint_table.getEarliestArrivalTime(
           agent_id, neighbor->point, new_point, expand_time, max(get<0>(safe_interval), lower_bound),
           min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
-      // there is no way to reach new node in this safe interval
+      // 현재 safe interval에서 neighbor노드에서 new node로 갈 수 있는 경로가 없으면 continue
       if (earliest_arrival_time < 0.0) continue;
 
-      shared_ptr<LLNode> new_node = make_shared<LLNode>(new_point);
-      new_node->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
-      new_node->num_of_soft_conflicts = neighbor->num_of_soft_conflicts;
-      new_nodes.emplace_back(new_node);
-
-      if (earliest_arrival_time < best_earliest_arrival_time) {
-        best_parent = neighbor;
-        best_earliest_arrival_time = earliest_arrival_time;
-        // TODO: This value should be updated.
-        best_num_of_soft_conflicts = neighbor->num_of_soft_conflicts;
-        best_new_nodes = move(new_nodes);
-      }
-
-      // new node로의 이동이 soft constraint를 위반한다면 soft_conflict를 1 증가시킨다.
+      // neighbor노드로부터 new node로 갈 때 soft constriant와 충돌하지 않는 가장 빠른 시간을 구한다.
       // const double earliest_arrival_time_soft = constraint_table.getEarliestArrivalTimeSoft(
-      //     agent_id, neighbor->point, new_node->point, expand_time, earliest_arrival_time,
+      //     agent_id, neighbor->point, new_point, expand_time, earliest_arrival_time,
       //     min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
       // if (earliest_arrival_time == earliest_arrival_time_soft) {
       //   // no collision
-      //   candidate_interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
-      //   candidate_num_of_soft_conflicts = neighbor->num_of_soft_conflicts;
+      //   shared_ptr<LLNode> new_node = make_shared<LLNode>(new_point);
+      //   new_node->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
+      //   new_node->num_of_soft_conflicts = neighbor->num_of_soft_conflicts;
+      //   new_nodes.emplace_back(new_node);
       // } else if (earliest_arrival_time_soft < 0.0) {
       //   // all collision
-      //   candidate_interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
-      //   candidate_num_of_soft_conflicts = neighbor->num_of_soft_conflicts + 1;
+      //   shared_ptr<LLNode> new_node = make_shared<LLNode>(new_point);
+      //   new_node->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
+      //   new_node->num_of_soft_conflicts = neighbor->num_of_soft_conflicts + 1;
+      //   new_nodes.emplace_back(new_node);
       // } else {
       //   // collision
-      //   candidate_interval = make_tuple(earliest_arrival_time, earliest_arrival_time_soft);
-      //   candidate_num_of_soft_conflicts = neighbor->num_of_soft_conflicts + 1;
+      //   shared_ptr<LLNode> new_node = make_shared<LLNode>(new_point);
+      //   new_node->interval = make_tuple(earliest_arrival_time, earliest_arrival_time_soft);
+      //   new_node->num_of_soft_conflicts = neighbor->num_of_soft_conflicts + 1;
+      //   new_nodes.emplace_back(new_node);
       //
       //   // no collision
-      //   candidate_interval = make_tuple(earliest_arrival_time_soft, get<1>(safe_interval));
-      //   candidate_num_of_soft_conflicts = neighbor->num_of_soft_conflicts;
+      //   new_node = make_shared<LLNode>(new_point);
+      //   new_node->interval = make_tuple(earliest_arrival_time_soft, get<1>(safe_interval));
+      //   new_node->num_of_soft_conflicts = neighbor->num_of_soft_conflicts;
+      //   new_nodes.emplace_back(new_node);
       // }
+
+      if (new_node->parent.lock() == nullptr || earliest_arrival_time < get<0>(new_node->interval)) {
+        new_node->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
+        new_node->num_of_soft_conflicts = neighbor->num_of_soft_conflicts;
+        new_node->parent = neighbor;
+      }
     }
   }
 
   // 만약 parent node가 nullptr이라면 그 어떠한 이웃 노드로부터도 새로운 노드로 갈 수 없다.
-  if (best_parent == nullptr) {
-    return {};
+  if (new_node->parent.lock() == nullptr) {
+    return nullptr;
   }
 
-  for (auto& new_node : best_new_nodes) {
-    new_node->parent = best_parent;
-    best_parent->children.emplace_back(new_node);
-  }
-  return best_new_nodes;
+  new_node->parent.lock()->children.emplace_back(new_node);
+  return new_node;
 }
 
-// void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
-//                    SafeIntervalTable& safe_interval_table) {
-//   assert(!neighbors.empty());
-//   for (auto& neighbor : neighbors) {
-//     // Skip if neighbor is the parent of new_node
-//     if (neighbor == new_node->parent.lock()) continue;
-//     if (constraint_table.obstacleConstrained(agent_id, new_node->point, neighbor->point, env.radii[agent_id]))
-//     continue;
-//
-//     const double expand_time = calculateDistance(new_node->point, neighbor->point) / env.velocities[agent_id];
-//     vector<int> candidate_soft_conflicts;
-//     vector<Interval> candidate_intervals;
-//     vector<int> candidate_parent_interval_indices;
-//
-//     for (int i = 0; i < new_node->intervals.size(); ++i) {
-//       const double lower_bound = get<0>(new_node->intervals[i]) + expand_time;
-//       const double upper_bound = get<1>(new_node->intervals[i]) + expand_time;
-//       assert(lower_bound > 0);
-//       assert(lower_bound < upper_bound);
-//
-//       auto safe_intervals = safe_interval_table.table[neighbor->point];
-//       for (auto& safe_interval : safe_intervals) {
-//         if (lower_bound >= get<1>(safe_interval)) continue;
-//         if (upper_bound <= get<0>(safe_interval)) break;
-//
-//         const double earliest_arrival_time = constraint_table.getEarliestArrivalTime(
-//             agent_id, new_node->point, neighbor->point, expand_time, max(get<0>(safe_interval), lower_bound),
-//             min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
-//         if (earliest_arrival_time < 0.0) continue;
-//
-//         const double earliest_arrival_time_soft = constraint_table.getEarliestArrivalTimeSoft(
-//             agent_id, new_node->point, neighbor->point, expand_time, earliest_arrival_time,
-//             min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
-//         if (earliest_arrival_time == earliest_arrival_time_soft) {
-//           // no collision
-//           candidate_intervals.emplace_back(earliest_arrival_time, get<1>(safe_interval));
-//           candidate_soft_conflicts.emplace_back(new_node->soft_conflicts[i]);
-//           candidate_parent_interval_indices.emplace_back(i);
-//           assert(new_node->soft_conflicts[i] >= 0);
-//         } else if (earliest_arrival_time_soft < 0.0) {
-//           // all collision
-//           candidate_intervals.emplace_back(earliest_arrival_time, get<1>(safe_interval));
-//           candidate_soft_conflicts.emplace_back(new_node->soft_conflicts[i] + 1);
-//           candidate_parent_interval_indices.emplace_back(i);
-//           assert(new_node->soft_conflicts[i] + 1 >= 0);
-//         } else {
-//           // collision
-//           candidate_intervals.emplace_back(earliest_arrival_time, earliest_arrival_time_soft);
-//           candidate_soft_conflicts.emplace_back(new_node->soft_conflicts[i] + 1);
-//           candidate_parent_interval_indices.emplace_back(i);
-//           assert(new_node->soft_conflicts[i] + 1 >= 0);
-//
-//           // no collision
-//           candidate_intervals.emplace_back(earliest_arrival_time_soft, get<1>(safe_interval));
-//           candidate_soft_conflicts.emplace_back(new_node->soft_conflicts[i]);
-//           candidate_parent_interval_indices.emplace_back(i);
-//           assert(new_node->soft_conflicts[i] >= 0);
-//         }
-//       }
-//     }
-//
-//     if (candidate_intervals.empty()) continue;
-//
-//     double earliest_arrival_time = numeric_limits<double>::infinity();
-//     int min_soft_conflict = numeric_limits<int>::max();
-//     for (const auto& interval : candidate_intervals) {
-//       earliest_arrival_time = min(earliest_arrival_time, get<0>(interval));
-//     }
-//     for (const auto& soft_conflict : candidate_soft_conflicts) {
-//       min_soft_conflict = min(min_soft_conflict, soft_conflict);
-//     }
-//
-//     // update if new_node is better than neighbor
-//     // if (min_soft_conflict < neighbor->min_soft_conflict) {
-//     //   neighbor->earliest_arrival_time = earliest_arrival_time;
-//     //   neighbor->min_soft_conflict = min_soft_conflict;
-//     //   neighbor->intervals = move(candidate_intervals);
-//     //   neighbor->soft_conflicts = move(candidate_soft_conflicts);
-//     //   neighbor->parent_interval_indices = move(candidate_parent_interval_indices);
-//     //   // update parent
-//     //   auto old_parent = neighbor->parent.lock();
-//     //   if (old_parent) {
-//     //     old_parent->children.erase(remove(old_parent->children.begin(), old_parent->children.end(), neighbor),
-//     //                                old_parent->children.end());
-//     //   }
-//     //
-//     //   neighbor->parent = new_node;
-//     //   new_node->children.emplace_back(neighbor);
-//     //   propagateCostToSuccessor(neighbor, safe_interval_table);
-//     //   assert(neighbor->earliest_arrival_time - new_node->earliest_arrival_time >= 0);
-//     //   assert(neighbor->min_soft_conflict - new_node->min_soft_conflict >= 0);
-//     // }
-//     if (earliest_arrival_time < neighbor->earliest_arrival_time) {
-//       neighbor->earliest_arrival_time = earliest_arrival_time;
-//       neighbor->min_soft_conflict = min_soft_conflict;
-//       neighbor->intervals = move(candidate_intervals);
-//       neighbor->soft_conflicts = move(candidate_soft_conflicts);
-//       neighbor->parent_interval_indices = move(candidate_parent_interval_indices);
-//       // update parent
-//       auto old_parent = neighbor->parent.lock();
-//       if (old_parent) {
-//         old_parent->children.erase(remove(old_parent->children.begin(), old_parent->children.end(), neighbor),
-//                                    old_parent->children.end());
-//       }
-//
-//       neighbor->parent = new_node;
-//       new_node->children.emplace_back(neighbor);
-//       propagateCostToSuccessor(neighbor, safe_interval_table);
-//       assert(neighbor->earliest_arrival_time - new_node->earliest_arrival_time >= 0);
-//       assert(neighbor->min_soft_conflict - new_node->min_soft_conflict >= 0);
-//     }
-//   }
-// }
-//
+void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
+                   SafeIntervalTable& safe_interval_table) {
+  assert(!neighbors.empty());
+  for (auto& neighbor : neighbors) {
+    // 만약 neighbor가 new_node의 부모라면 continue
+    if (neighbor == new_node->parent.lock()) continue;
+
+    // 만약 새로운 노드로부터 이웃 노드로 갈 때 정적인 장애물과 충돌한다면 continue
+    if (constraint_table.obstacleConstrained(agent_id, new_node->point, neighbor->point, env.radii[agent_id])) continue;
+
+    // new_node로부터 neighbor로 갈 때 이동하는 시간
+    const double expand_time = calculateDistance(new_node->point, neighbor->point) / env.velocities[agent_id];
+
+    // new node로부터 neighbor로 갈 때의 lower bound와 upper bound
+    const double lower_bound = get<0>(new_node->interval) + expand_time;
+    const double upper_bound = get<1>(new_node->interval) + expand_time;
+    assert(lower_bound > 0);
+    assert(lower_bound < upper_bound);
+
+    // neighbor의 safe interval들을 순회하면서
+    auto safe_intervals = safe_interval_table.table[neighbor->point];
+    for (auto& safe_interval : safe_intervals) {
+      // lower bound와 upper bound가 safe interval과 겹치지 않는다면 continue
+      if (lower_bound >= get<1>(safe_interval)) continue;
+      if (upper_bound <= get<0>(safe_interval)) break;
+
+      // new node로부터 neighbor로 갈 때의 가장 빠른 도착 시간을 구한다.
+      // 가장 빠른 도착 시간이란 new node로부터 neighbor로 갈 때 hard constraint와 충돌하지 않는 가장 빠른 시간을
+      // 의미한다.
+      const double earliest_arrival_time = constraint_table.getEarliestArrivalTime(
+          agent_id, new_node->point, neighbor->point, expand_time, max(get<0>(safe_interval), lower_bound),
+          min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
+      if (earliest_arrival_time < 0.0) continue;
+
+      // 가장 빠른 도착 시간이 neighbor의 interval보다 작다면 neighbor의 interval을 업데이트한다.
+      if (earliest_arrival_time < get<0>(neighbor->interval)) {
+        neighbor->parent.lock()->children.erase(
+            remove(neighbor->parent.lock()->children.begin(), neighbor->parent.lock()->children.end(), neighbor),
+            neighbor->parent.lock()->children.end());
+        neighbor->parent = new_node;
+        new_node->children.emplace_back(neighbor);
+        neighbor->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
+        neighbor->num_of_soft_conflicts = new_node->num_of_soft_conflicts;
+        // propagateCostToSuccessor(neighbor, safe_interval_table);
+        break;
+      }
+    }
+  }
+}
+
 // void SIRRT::propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeIntervalTable& safe_interval_table) {
 //   auto iter = node->children.begin();
 //   while (iter != node->children.end()) {
 //     auto child = *iter;
-//     const double expand_time = calculateDistance(node->point, child->point) / env.velocities[agent_id];
-//     vector<Interval> intervals;
-//     vector<int> soft_conflicts;
-//     vector<int> parent_interval_indices;
 //
-//     for (int i = 0; i < node->intervals.size(); ++i) {
-//       const double lower_bound = get<0>(node->intervals[i]) + expand_time;
-//       const double upper_bound = get<1>(node->intervals[i]) + expand_time;
-//       assert(lower_bound > 0);
-//       assert(lower_bound < upper_bound);
-//       auto safe_intervals = safe_interval_table.table[child->point];
-//       for (auto& safe_interval : safe_intervals) {
-//         if (lower_bound >= get<1>(safe_interval)) continue;
-//         if (upper_bound <= get<0>(safe_interval)) break;
-//
-//         const double earliest_arrival_time = constraint_table.getEarliestArrivalTime(
-//             agent_id, node->point, child->point, expand_time, max(get<0>(safe_interval), lower_bound),
-//             min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
-//         if (earliest_arrival_time < 0.0) continue;
-//
-//         const double earliest_arrival_time_soft = constraint_table.getEarliestArrivalTimeSoft(
-//             agent_id, node->point, child->point, expand_time, earliest_arrival_time,
-//             min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
-//         if (earliest_arrival_time == earliest_arrival_time_soft) {
-//           // no collision
-//           intervals.emplace_back(earliest_arrival_time, get<1>(safe_interval));
-//           soft_conflicts.emplace_back(node->soft_conflicts[i]);
-//           parent_interval_indices.emplace_back(i);
-//           assert(node->soft_conflicts[i] >= 0);
-//         } else if (earliest_arrival_time_soft < 0.0) {
-//           // all collision
-//           intervals.emplace_back(earliest_arrival_time, get<1>(safe_interval));
-//           soft_conflicts.emplace_back(node->soft_conflicts[i] + 1);
-//           parent_interval_indices.emplace_back(i);
-//           assert(node->soft_conflicts[i] + 1 >= 0);
-//         } else {
-//           // collision
-//           intervals.emplace_back(earliest_arrival_time, earliest_arrival_time_soft);
-//           soft_conflicts.emplace_back(node->soft_conflicts[i] + 1);
-//           parent_interval_indices.emplace_back(i);
-//           assert(node->soft_conflicts[i] + 1 >= 0);
-//
-//           // no collision
-//           intervals.emplace_back(earliest_arrival_time_soft, get<1>(safe_interval));
-//           soft_conflicts.emplace_back(node->soft_conflicts[i]);
-//           parent_interval_indices.emplace_back(i);
-//           assert(node->soft_conflicts[i] >= 0);
-//         }
-//       }
-//     }
-//
-//     // 업데이트로 interval이 없어진 child는 삭제한다.
-//     if (intervals.empty()) {
+//     // 만약 부모 노드로부터 자식 노드로 갈 때 정적인 장애물과 충돌한다면 child는 삭제한다.
+//     if (constraint_table.obstacleConstrained(agent_id, node->point, child->point, env.radii[agent_id])) {
 //       child->parent.reset();
 //       iter = node->children.erase(iter);
 //       continue;
 //     }
 //
-//     double earliest_arrival_time = numeric_limits<double>::infinity();
-//     int min_soft_conflict = numeric_limits<int>::max();
-//     for (const auto& interval : child->intervals) {
-//       earliest_arrival_time = min(earliest_arrival_time, get<0>(interval));
-//     }
-//     for (const auto& soft_conflict : child->soft_conflicts) {
-//       min_soft_conflict = min(min_soft_conflict, soft_conflict);
+//     // 부모 노드로부터 자식 노드로 갈 때 이동하는 시간
+//     const double expand_time = calculateDistance(node->point, child->point) / env.velocities[agent_id];
+//
+//     // 부모 노드로부터 자식 노드로 갈 때의 lower bound와 upper bound
+//     const double lower_bound = get<0>(node->interval) + expand_time;
+//     const double upper_bound = get<1>(node->interval) + expand_time;
+//     assert(lower_bound > 0);
+//     assert(lower_bound < upper_bound);
+//
+//     // child의 safe interval들을 순회하면서
+//     bool updated = false;
+//     auto safe_intervals = safe_interval_table.table[child->point];
+//     for (auto& safe_interval : safe_intervals) {
+//       // lower bound와 upper bound가 safe interval과 겹치지 않는다면 continue
+//       if (lower_bound >= get<1>(safe_interval)) continue;
+//       if (upper_bound <= get<0>(safe_interval)) break;
+//
+//       // node로부터 child로 갈 때의 가장 빠른 도착 시간을 구한다.
+//       // 가장 빠른 도착 시간이란 node로부터 child로 갈 때 hard constraint와 충돌하지 않는 가장 빠른 시간을 의미한다.
+//       const double earliest_arrival_time = constraint_table.getEarliestArrivalTime(
+//           agent_id, node->point, child->point, expand_time, max(get<0>(safe_interval), lower_bound),
+//           min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
+//       if (earliest_arrival_time < 0.0) continue;
+//
+//       child->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
+//       child->num_of_soft_conflicts = node->num_of_soft_conflicts;
+//       updated = true;
 //     }
 //
-//     child->earliest_arrival_time = earliest_arrival_time;
-//     child->min_soft_conflict = min_soft_conflict;
-//     child->intervals = move(intervals);
-//     child->soft_conflicts = move(soft_conflicts);
-//     child->parent_interval_indices = move(parent_interval_indices);
+//     // 업데이트로 interval이 없어진 child는 삭제한다.
+//     if (!updated) {
+//       child->parent.reset();
+//       iter = node->children.erase(iter);
+//       continue;
+//     }
 //
 //     propagateCostToSuccessor(child, safe_interval_table);
 //     ++iter;
