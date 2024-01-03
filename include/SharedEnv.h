@@ -44,13 +44,13 @@ class SharedEnv {
         gen(seed) {}
 
   void generateRandomInstance() {
-    uniform_real_distribution<> dis_width(0.0, width);
-    uniform_real_distribution<> dis_height(0.0, height);
     start_points.clear();
     goal_points.clear();
 
     int agent_id = 0;
     while (start_points.size() < num_of_robots) {
+      uniform_real_distribution<> dis_width(radii[agent_id], width - radii[agent_id]);
+      uniform_real_distribution<> dis_height(radii[agent_id], height - radii[agent_id]);
       auto start_point = make_tuple(dis_width(gen), dis_height(gen));
       if (!obstacleConstrained(start_point, radii[agent_id]) && !occupied(start_point, radii[agent_id], start_points)) {
         start_points.emplace_back(start_point);
@@ -60,6 +60,8 @@ class SharedEnv {
 
     agent_id = 0;
     while (goal_points.size() < num_of_robots) {
+      uniform_real_distribution<> dis_width(radii[agent_id], width - radii[agent_id]);
+      uniform_real_distribution<> dis_height(radii[agent_id], height - radii[agent_id]);
       auto goal_point = make_tuple(dis_width(gen), dis_height(gen));
       if (!obstacleConstrained(goal_point, radii[agent_id]) && !occupied(goal_point, radii[agent_id], goal_points)) {
         goal_points.emplace_back(goal_point);

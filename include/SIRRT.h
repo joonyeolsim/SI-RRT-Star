@@ -26,8 +26,8 @@ class SIRRT {
   ConstraintTable& constraint_table;
 
   SIRRT(int agent_id, SharedEnv& env, ConstraintTable& constraint_table)
-      : dis_width(0.0, env.width),
-        dis_height(0.0, env.height),
+      : dis_width(env.radii[agent_id], env.width - env.radii[agent_id]),
+        dis_height(env.radii[agent_id], env.height - env.radii[agent_id]),
         dis_100(0.0, 100.0),
         env(env),
         constraint_table(constraint_table),
