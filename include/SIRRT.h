@@ -38,12 +38,12 @@ class SIRRT {
   Path run();
   Point generateRandomPoint();
   shared_ptr<LLNode> getNearestNode(const Point& point) const;
-  shared_ptr<LLNode> steer(const shared_ptr<LLNode>& from_node, const Point& random_point,
-                           SafeIntervalTable& safe_interval_table) const;
-  Path updatePath(const shared_ptr<LLNode>& goal_node, const int interval_index) const;
-  void getNeighbors(const shared_ptr<LLNode>& new_node, vector<shared_ptr<LLNode>>& neighbors) const;
-  bool chooseParent(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
-                    SafeIntervalTable& safe_interval_table) const;
+  Point steer(const shared_ptr<LLNode>& from_node, const Point& random_point,
+              SafeIntervalTable& safe_interval_table) const;
+  Path updatePath(const shared_ptr<LLNode>& goal_node) const;
+  void getNeighbors(Point point, vector<shared_ptr<LLNode>>& neighbors) const;
+  vector<shared_ptr<LLNode>> chooseParent(const Point& new_point, const vector<shared_ptr<LLNode>>& neighbors,
+                                          SafeIntervalTable& safe_interval_table) const;
   void rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
               SafeIntervalTable& safe_interval_table);
   void propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeIntervalTable& safe_interval_table);
