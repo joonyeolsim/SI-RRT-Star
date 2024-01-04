@@ -146,7 +146,7 @@ Path SIRRT::updatePath(const shared_ptr<LLNode>& goal_node) const {
     path.emplace_back(curr_node->point, curr_time);
     if (prev_time + expand_time + env.epsilon < curr_time) {
       path.emplace_back(prev_node->point, curr_time - expand_time);
-      cout << "path is not continuous" << endl;
+      // cout << "path is not continuous" << endl;
     }
     curr_node = curr_node->parent.lock();
   }
@@ -227,7 +227,7 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
                    SafeIntervalTable& safe_interval_table) {
   assert(!neighbors.empty());
   for (auto& neighbor : neighbors) {
-    cout << get<0>(neighbor->point) << " " << get<1>(neighbor->point) << endl;
+    // cout << get<0>(neighbor->point) << " " << get<1>(neighbor->point) << endl;
     // 만약 neighbor가 new_node의 부모라면 continue
     if (neighbor == new_node->parent.lock()) continue;
 
@@ -267,7 +267,7 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
             neighbor->parent.lock()->children.end());
         neighbor->parent = new_node;
         new_node->children.emplace_back(neighbor);
-        propagateCostToSuccessor(neighbor, safe_interval_table);
+        // propagateCostToSuccessor(neighbor, safe_interval_table);
         break;
       }
     }
@@ -324,7 +324,7 @@ void SIRRT::propagateCostToSuccessor(const shared_ptr<LLNode>& node, SafeInterva
 }
 
 void SIRRT::pruneNode(shared_ptr<LLNode>& node) {
-  cout << "Pruning node: " << get<0>(node->point) << " " << get<1>(node->point) << endl;
+  // cout << "Pruning node: " << get<0>(node->point) << " " << get<1>(node->point) << endl;
   while (!node->children.empty()) {
     auto child = node->children.back();
     node->children.pop_back();

@@ -12,6 +12,13 @@ file_path = 'solution.txt'
 with open(file_path, 'r') as file:
     data = file.readlines()
 
+# radii.txt 파일에서 반지름 데이터 읽기
+# radii_file_path = 'radii.txt'
+# with open(radii_file_path, 'r') as file:
+#     radii_data = file.readlines()
+# radii = [float(radius.strip()) for radius in radii_data]
+radii = [0.25 for _ in range(80)]
+
 
 # 데이터 파싱
 def parse_data(data):
@@ -103,7 +110,8 @@ def animate(frame):
         for other_agent_id, other_circle in circles.items():
             if agent_id == other_agent_id:
                 continue
-            if np.linalg.norm(np.array(circle.center) - np.array(other_circle.center)) < 0.5 * 0.9 + 0.5 * 0.9:
+            if np.linalg.norm(np.array(circle.center) - np.array(other_circle.center)) < radii[agent_id] * 0.9 + radii[
+                other_agent_id] * 0.9:
                 circle.set_facecolor('red')
                 print(f'Collision between agents {agent_id} and {other_agent_id} at time {time:.2f}s')
     return [time_text] + list(circles.values()) + annotations
@@ -116,8 +124,18 @@ ax.set_ylim(0, 32)
 add_start_end_points(ax, agents)  # 시작점과 도착점, 에이전트 번호 추가
 
 time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
-circles = {agent_id: Circle((0, 0), 0.5 * 0.9, fc='blue') for agent_id, path in agents.items() if path}
-obstacles = [Circle((15, 15), 2, fc='black')]
+circles = {}
+for agent_id, path in agents.items():
+    if path:
+        radius = radii[agent_id] * 0.9  # 예를 들어 0.9를 곱하여 실제 크기를 조정할 수 있습니다.
+        circles[agent_id] = Circle((0, 0), radius, fc='blue')
+
+obstacles = [
+    Circle((5, 10), 1.5, fc='black'),
+    Circle((10, 10), 2, fc='black'),
+    Circle((15, 15), 1, fc='black'),
+    Circle((25, 25), 3, fc='black'),
+]
 for circle in circles.values():
     ax.add_patch(circle)
 for obstacle in obstacles:
