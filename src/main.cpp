@@ -22,8 +22,10 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  string benchmarkPath = "benchmark/" + mapname + "_" + obs + "/" + mapname + "_" + obs + "_" + testnum + ".yaml";
-  string solutionPath = "solution/" + mapname + "_" + obs + "/" + mapname + "_" + obs + "_" + testnum + ".txt";
+  // string benchmarkPath = "benchmark/" + mapname + "_" + obs + "/" + mapname + "_" + obs + "_" + testnum + ".yaml";
+  string benchmarkPath = "environment.yaml";
+  string solutionPath = "solution.txt";
+  // string solutionPath = "solution/" + mapname + "_" + obs + "/" + mapname + "_" + obs + "_" + testnum + ".txt";
   string dataPath = "data/" + mapname + "_" + obs + "/" + mapname + "_" + obs + "_" + testnum + ".txt";
   YAML::Node config = YAML::LoadFile(benchmarkPath);
 
@@ -34,12 +36,18 @@ int main(int argc, char* argv[]) {
     auto width = config["obstacles"][i]["width"].as<double>();
     obstacles.emplace_back(make_shared<RectangularObstacle>(center[0], center[1], width, height));
   }
-
-  int num_of_agents = 10;
-  int width = 40;
-  int height = 40;
   vector<Point> start_points;
   vector<Point> goal_points;
+  for (size_t i = 0; i < config["startPoints"].size(); ++i) {
+    auto start = config["startPoints"][i].as<std::vector<double>>();
+    auto goal = config["goalPoints"][i].as<std::vector<double>>();
+    start_points.emplace_back(start[0], start[1]);
+    goal_points.emplace_back(goal[0], goal[1]);
+  }
+
+  int num_of_agents = config["agentNum"].as<int>();
+  int width = 40;
+  int height = 40;
   vector<double> radii;
   vector<double> max_expand_distances;
   vector<double> velocities;
@@ -59,7 +67,7 @@ int main(int argc, char* argv[]) {
 
   SharedEnv env = SharedEnv(num_of_agents, width, height, start_points, goal_points, radii, max_expand_distances,
                             velocities, iterations, goal_sample_rates, obstacles);
-  env.generateRandomInstance();
+  // env.generateRandomInstance();
   ConstraintTable constraint_table(env);
   Solution soluiton;
   auto start = std::chrono::high_resolution_clock::now();
