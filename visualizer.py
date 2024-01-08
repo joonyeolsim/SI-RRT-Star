@@ -3,7 +3,8 @@ import re
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import Circle
+import yaml
+from matplotlib.patches import Circle, Rectangle
 
 sample = 10
 
@@ -17,7 +18,7 @@ with open(file_path, 'r') as file:
 # with open(radii_file_path, 'r') as file:
 #     radii_data = file.readlines()
 # radii = [float(radius.strip()) for radius in radii_data]
-radii = [0.25 for _ in range(80)]
+radii = [0.5 for _ in range(80)]
 
 
 # 데이터 파싱
@@ -110,11 +111,23 @@ def animate(frame):
         for other_agent_id, other_circle in circles.items():
             if agent_id == other_agent_id:
                 continue
-            if np.linalg.norm(np.array(circle.center) - np.array(other_circle.center)) < radii[agent_id] * 0.9 + radii[
-                other_agent_id] * 0.9:
+            if np.linalg.norm(np.array(circle.center) - np.array(other_circle.center)) < radii[agent_id] * 0.85 + radii[
+                other_agent_id] * 0.85:
                 circle.set_facecolor('red')
                 print(f'Collision between agents {agent_id} and {other_agent_id} at time {time:.2f}s')
     return [time_text] + list(circles.values()) + annotations
+
+
+def add_obstacles(ax, yaml_file_path):
+    with open(yaml_file_path, 'r') as file:
+        yaml_data = yaml.safe_load(file)
+
+    for obstacle_data in yaml_data['obstacles']:
+        center = obstacle_data['center']
+        width = obstacle_data['width']
+        height = obstacle_data['height']
+        rectangle = Rectangle((center[0] - width / 2, center[1] - height / 2), width, height, fc='black')
+        ax.add_patch(rectangle)
 
 
 # 기존 애니메이션 구성 코드는 그대로 유지
@@ -123,23 +136,16 @@ ax.set_xlim(0, 32)
 ax.set_ylim(0, 32)
 add_start_end_points(ax, agents)  # 시작점과 도착점, 에이전트 번호 추가
 
+yaml_file_path = "environment_10.yaml"
+add_obstacles(ax, yaml_file_path)
+
 time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
 circles = {}
 for agent_id, path in agents.items():
     if path:
         radius = radii[agent_id] * 0.9  # 예를 들어 0.9를 곱하여 실제 크기를 조정할 수 있습니다.
         circles[agent_id] = Circle((0, 0), radius, fc='blue')
-
-obstacles = [
-    Circle((5, 10), 1.5, fc='black'),
-    Circle((10, 10), 2, fc='black'),
-    Circle((15, 15), 1, fc='black'),
-    Circle((25, 25), 3, fc='black'),
-]
-for circle in circles.values():
-    ax.add_patch(circle)
-for obstacle in obstacles:
-    ax.add_patch(obstacle)
+    ax.add_patch(circles.get(agent_id, Circle((0, 0), 0)))
 
 ani = animation.FuncAnimation(fig, animate, frames=int(total_time * sample), init_func=init, blit=True, interval=1)
 

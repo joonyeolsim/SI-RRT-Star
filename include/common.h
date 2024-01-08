@@ -58,12 +58,26 @@ class RectangularObstacle : public Obstacle {
   double width, height;
   RectangularObstacle(double x, double y, double width, double height) : Obstacle(x, y), width(width), height(height) {}
   bool constrained(const Point& other_point, const double other_radius) override {
-    const double x = get<0>(point);
-    const double y = get<1>(point);
-    const double other_x = get<0>(other_point);
-    const double other_y = get<1>(other_point);
-    return (x - width / 2 - other_radius <= other_x && other_x <= x + width / 2 + other_radius &&
-            y - height / 2 - other_radius <= other_y && other_y <= y + height / 2 + other_radius);
+    const auto& [agentX, agentY] = other_point;
+    const double agentR = other_radius;
+    const auto& [x, y] = point;
+
+    double rectLeft = x - width / 2;
+    double rectRight = x + width / 2;
+    double rectTop = y - height / 2;
+    double rectBottom = y + height / 2;
+
+    if (agentX >= rectLeft && agentX <= rectRight && agentY >= rectTop && agentY <= rectBottom) {
+      return true;
+    }
+
+    double closestX = (agentX <= rectLeft) ? rectLeft : (agentX >= rectRight) ? rectRight : agentX;
+    double closestY = (agentY <= rectTop) ? rectTop : (agentY >= rectBottom) ? rectBottom : agentY;
+
+    double distX = agentX - closestX;
+    double distY = agentY - closestY;
+
+    return (distX * distX + distY * distY) <= (agentR * agentR);
   }
 };
 
