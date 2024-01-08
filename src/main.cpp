@@ -29,9 +29,9 @@ int main(int argc, char* argv[]) {
     obstacles.emplace_back(make_shared<RectangularObstacle>(center[0], center[1], width, height));
   }
 
-  int num_of_agents = 75;
-  int width = 32;
-  int height = 32;
+  int num_of_agents = 50;
+  int width = 40;
+  int height = 40;
   vector<Point> start_points;
   vector<Point> goal_points;
   vector<double> radii;
@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
     max_expand_distances.emplace_back(5.0);
     velocities.emplace_back(0.5);
     thresholds.emplace_back(0.01);
-    iterations.emplace_back(1000);
+    iterations.emplace_back(1500);
     goal_sample_rates.emplace_back(10.0);
   }
 
