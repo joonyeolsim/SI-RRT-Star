@@ -79,7 +79,7 @@ Path SIRRT::run() {
     return path;
   }
 
-  cout << "No path found!" << endl;
+  // cout << "No path found!" << endl;
   return path;
 }
 

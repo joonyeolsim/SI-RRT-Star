@@ -22,8 +22,8 @@ class SharedEnv {
   vector<Point> goal_points;
   vector<shared_ptr<Obstacle>> obstacles;
   double time_resolution = 0.1;
-  // unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-  unsigned seed = 0;
+  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+  // unsigned seed = 0;
   default_random_engine gen;
 
   SharedEnv(int num_of_robots, int width, int height, const vector<Point>& start_points,

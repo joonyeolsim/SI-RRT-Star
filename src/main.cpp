@@ -7,29 +7,25 @@
 
 int main(int argc, char* argv[]) {
   string benchmarkPath;
-  string solutionPath;
-  string dataPath;
+  string testnum;
   for (int i = 1; i < argc; ++i) {
-    if (strcmp(argv[i], "-c") == 0 && i + 1 < argc) {
-      benchmarkPath = argv[++i];
-    } else if (strcmp(argv[i], "-s") == 0 && i + 1 < argc) {
-      solutionPath = argv[++i];
-    } else if (strcmp(argv[i], "-d") == 0 && i + 1 < argc) {
-      dataPath = argv[++i];
+    if (strcmp(argv[i], "-n") == 0 && i + 1 < argc) {
+      testnum = argv[++i];
     }
   }
 
+  benchmarkPath = "maps/map_tetris_404020_" + testnum + ".yaml";
   YAML::Node config = YAML::LoadFile(benchmarkPath);
 
   vector<shared_ptr<Obstacle>> obstacles;
-  for (size_t i = 0; i < config["obstacles"].size(); ++i) {
-    auto center = config["obstacles"][i]["center"].as<std::vector<double>>();
-    auto height = config["obstacles"][i]["height"].as<double>();
-    auto width = config["obstacles"][i]["width"].as<double>();
-    obstacles.emplace_back(make_shared<RectangularObstacle>(center[0], center[1], width, height));
-  }
+  // for (size_t i = 0; i < config["obstacles"].size(); ++i) {
+  //   auto center = config["obstacles"][i]["center"].as<std::vector<double>>();
+  //   auto height = config["obstacles"][i]["height"].as<double>();
+  //   auto width = config["obstacles"][i]["width"].as<double>();
+  //   obstacles.emplace_back(make_shared<RectangularObstacle>(center[0], center[1], width, height));
+  // }
 
-  int num_of_agents = 50;
+  int num_of_agents = 30;
   int width = 40;
   int height = 40;
   vector<Point> start_points;
@@ -77,9 +73,9 @@ int main(int argc, char* argv[]) {
   auto stop = std::chrono::high_resolution_clock::now();
   chrono::duration<double, std::ratio<1>> duration = stop - start;
   cout << "Time taken by function: " << duration.count() << " seconds" << endl;
-  saveSolution(soluiton, "solution.txt");
+  saveSolution(soluiton, "solution" + testnum + ".txt");
 
-  std::ofstream outfile("radii.txt");  // 파일 쓰기 객체 생성
+  std::ofstream outfile("radii" + testnum + ".txt");  // 파일 쓰기 객체 생성
   if (!outfile.is_open()) {
     std::cerr << "Failed to open file for writing." << std::endl;
     return 1;

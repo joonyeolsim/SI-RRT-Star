@@ -18,7 +18,7 @@ with open(file_path, 'r') as file:
 # with open(radii_file_path, 'r') as file:
 #     radii_data = file.readlines()
 # radii = [float(radius.strip()) for radius in radii_data]
-radii = [0.5 for _ in range(80)]
+radii = [0.5 for _ in range(100)]
 
 
 # 데이터 파싱
@@ -132,11 +132,11 @@ def add_obstacles(ax, yaml_file_path):
 
 # 기존 애니메이션 구성 코드는 그대로 유지
 fig, ax = plt.subplots(figsize=(10, 10))
-ax.set_xlim(0, 32)
-ax.set_ylim(0, 32)
+ax.set_xlim(0, 40)
+ax.set_ylim(0, 40)
 add_start_end_points(ax, agents)  # 시작점과 도착점, 에이전트 번호 추가
 
-yaml_file_path = "environment_10.yaml"
+yaml_file_path = "map_tetris_404020_0.yaml"
 add_obstacles(ax, yaml_file_path)
 
 time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)

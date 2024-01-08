@@ -19,8 +19,8 @@ Solution SICBS::run() {
 
     auto conflict = curr_node.conflicts[0];
     vector<int> agent_ids = {get<0>(conflict), get<1>(conflict)};
-    cout << "Conflict : "
-         << "(Agent " << agent_ids[0] << ", Agent " << agent_ids[1] << "), " << endl;
+    // cout << "Conflict : "
+    //      << "(Agent " << agent_ids[0] << ", Agent " << agent_ids[1] << "), " << endl;
     const auto partial_path1 = get<0>(get<2>(conflict));
     const auto partial_path2 = get<1>(get<2>(conflict));
     // cout << "Interval : " << get<1>(partial_path1.front()) << " ~ " << get<1>(partial_path1.back()) << endl;
@@ -184,5 +184,5 @@ void SICBS::findConflicts(const Solution& solution, vector<Conflict>& conflicts)
     }
   }
 
-  cout << "Number of conflicts : " << conflicts.size() << endl;
+  // cout << "Number of conflicts : " << conflicts.size() << endl;
 }
