@@ -33,6 +33,7 @@ typedef vector<Path> Solution;
 
 void savePath(const Path& path, const string& filename);
 void saveSolution(const Solution& solution, const string& filename);
+void saveData(double cost, double makespan, double duration, const string& filename);
 double calculateDistance(Point point1, Point point2);
 
 struct PointHash {

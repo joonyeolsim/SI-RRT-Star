@@ -6,26 +6,36 @@
 #include "SharedEnv.h"
 
 int main(int argc, char* argv[]) {
-  string benchmarkPath;
+  string mapname;
+  string obs;
+  string robotnum;
   string testnum;
   for (int i = 1; i < argc; ++i) {
-    if (strcmp(argv[i], "-n") == 0 && i + 1 < argc) {
-      testnum = argv[++i];
+    if (strcmp(argv[i], "-m") == 0 && i + 1 < argc) {
+      mapname = argv[i + 1];
+    } else if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
+      obs = argv[i + 1];
+    } else if (strcmp(argv[i], "-r") == 0 && i + 1 < argc) {
+      robotnum = argv[i + 1];
+    } else if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
+      testnum = argv[i + 1];
     }
   }
 
-  benchmarkPath = "benchmark/RectangleEnv20/map_tetris_404020_" + testnum + ".yaml";
+  string benchmarkPath = "benchmark/" + mapname + "_" + obs + "/" + mapname + "_" + obs + "_" + testnum + ".yaml";
+  string solutionPath = "solution/" + mapname + "_" + obs + "/" + mapname + "_" + obs + "_" + testnum + ".txt";
+  string dataPath = "data/" + mapname + "_" + obs + "/" + mapname + "_" + obs + "_" + testnum + ".txt";
   YAML::Node config = YAML::LoadFile(benchmarkPath);
 
   vector<shared_ptr<Obstacle>> obstacles;
-  // for (size_t i = 0; i < config["obstacles"].size(); ++i) {
-  //   auto center = config["obstacles"][i]["center"].as<std::vector<double>>();
-  //   auto height = config["obstacles"][i]["height"].as<double>();
-  //   auto width = config["obstacles"][i]["width"].as<double>();
-  //   obstacles.emplace_back(make_shared<RectangularObstacle>(center[0], center[1], width, height));
-  // }
+  for (size_t i = 0; i < config["obstacles"].size(); ++i) {
+    auto center = config["obstacles"][i]["center"].as<std::vector<double>>();
+    auto height = config["obstacles"][i]["height"].as<double>();
+    auto width = config["obstacles"][i]["width"].as<double>();
+    obstacles.emplace_back(make_shared<RectangularObstacle>(center[0], center[1], width, height));
+  }
 
-  int num_of_agents = 30;
+  int num_of_agents = 10;
   int width = 40;
   int height = 40;
   vector<Point> start_points;
@@ -43,7 +53,7 @@ int main(int argc, char* argv[]) {
     max_expand_distances.emplace_back(5.0);
     velocities.emplace_back(0.5);
     thresholds.emplace_back(0.01);
-    iterations.emplace_back(1500);
+    iterations.emplace_back(1000);
     goal_sample_rates.emplace_back(10.0);
   }
 
@@ -57,7 +67,6 @@ int main(int argc, char* argv[]) {
   // SI-CBS
   SICBS sicbs(env, constraint_table);
   soluiton = sicbs.run();
-  cout << "solution cost: " << sicbs.sum_of_costs << endl;
 
   // SI-RRT PP
   // double sum_of_costs = 0.0;
@@ -72,20 +81,12 @@ int main(int argc, char* argv[]) {
 
   auto stop = std::chrono::high_resolution_clock::now();
   chrono::duration<double, std::ratio<1>> duration = stop - start;
-  cout << "Time taken by function: " << duration.count() << " seconds" << endl;
-  saveSolution(soluiton, "solution" + testnum + ".txt");
 
-  std::ofstream outfile("radii" + testnum + ".txt");  // 파일 쓰기 객체 생성
-  if (!outfile.is_open()) {
-    std::cerr << "Failed to open file for writing." << std::endl;
-    return 1;
-  }
-
-  for (const auto& radius : radii) {
-    outfile << radius << std::endl;  // 각 반지름 값을 파일에 씁니다.
-  }
-
-  outfile.close(); // 파일 쓰기 완료 후 파일 닫기
+  cout << "sum of cost: " << sicbs.sum_of_costs << endl;
+  cout << "makespan: " << sicbs.makespan << endl;
+  cout << "computation time: " << duration.count() << endl;
+  saveSolution(soluiton, solutionPath);
+  saveData(sicbs.sum_of_costs, sicbs.makespan, duration.count(), dataPath);
 
   return 0;
 }

@@ -36,6 +36,18 @@ void saveSolution(const Solution& solution, const string& filename) {
   file.close();
 }
 
+void saveData(double cost, double makespan, double duration, const string& filename) {
+  ofstream file(filename, ios::out);
+  if (!file.is_open()) {
+    cerr << "Error opening file: " << filename << endl;
+    return;
+  }
+
+  file << cost << "," << makespan << "," << duration << endl;
+
+  file.close();
+}
+
 double calculateDistance(Point point1, Point point2) {
   return sqrt(pow(get<0>(point1) - get<0>(point2), 2) + pow(get<1>(point1) - get<1>(point2), 2));
 }

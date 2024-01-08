@@ -4,6 +4,10 @@ Solution SICBS::run() {
   HLNode root;
   root.constraint_table.resize(env.num_of_robots);
   root.solution = getInitialSolution();
+  if (root.solution.empty()) {
+    cout << "No solution" << endl;
+    return {};
+  }
   root.cost = calculateCost(root.solution);
   findConflicts(root.solution, root.conflicts);
 
@@ -14,6 +18,9 @@ Solution SICBS::run() {
 
     if (curr_node.conflicts.empty()) {
       sum_of_costs = curr_node.cost;
+      for (const auto& path : curr_node.solution) {
+        makespan = max(makespan, get<1>(path.back()));
+      }
       return curr_node.solution;
     }
 
@@ -56,7 +63,7 @@ Solution SICBS::run() {
       // update path
       new_node.solution[agent_ids[i]] = low_level_planners[agent_ids[i]].run();
       if (new_node.solution[agent_ids[i]].empty()) continue;
-      constraint_table.updateSoftConstraint(i, new_node.solution[agent_ids[i]]);
+      // constraint_table.updateSoftConstraint(i, new_node.solution[agent_ids[i]]);
 
       // print after path`
       // cout << "After path" << agent_ids[i] << ": ";
@@ -85,8 +92,12 @@ Solution SICBS::getInitialSolution() {
   Solution solution;
   for (int agent_id = 0; agent_id < env.num_of_robots; ++agent_id) {
     auto path = low_level_planners[agent_id].run();
+    if (path.empty()) {
+      cout << "No path for agent " << agent_id << endl;
+      return {};
+    }
     solution.emplace_back(path);
-    constraint_table.updateSoftConstraint(agent_id, path);
+    // constraint_table.updateSoftConstraint(agent_id, path);
   }
   return solution;
 }
