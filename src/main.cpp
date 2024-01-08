@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  benchmarkPath = "maps/map_tetris_404020_" + testnum + ".yaml";
+  benchmarkPath = "benchmark/RectangleEnv20/map_tetris_404020_" + testnum + ".yaml";
   YAML::Node config = YAML::LoadFile(benchmarkPath);
 
   vector<shared_ptr<Obstacle>> obstacles;
