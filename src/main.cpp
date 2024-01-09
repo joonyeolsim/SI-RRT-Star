@@ -22,10 +22,8 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  // string benchmarkPath = "benchmark/" + mapname + "_" + obs + "/" + mapname + "_" + obs + "_" + testnum + ".yaml";
-  string benchmarkPath = "environment.yaml";
-  string solutionPath = "solution.txt";
-  // string solutionPath = "solution/" + mapname + "_" + obs + "/" + mapname + "_" + obs + "_" + testnum + ".txt";
+  string benchmarkPath = "benchmark/" + mapname + "_" + obs + "/" + mapname + "_" + obs + "_" + testnum + ".yaml";
+  string solutionPath = "solution/" + mapname + "_" + obs + "/" + mapname + "_" + obs + "_" + testnum + ".txt";
   string dataPath = "data/" + mapname + "_" + obs + "/" + mapname + "_" + obs + "_" + testnum + ".txt";
   YAML::Node config = YAML::LoadFile(benchmarkPath);
 
