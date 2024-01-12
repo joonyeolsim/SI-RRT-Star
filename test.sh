@@ -16,18 +16,18 @@ execute_with_timeout() {
 }
 
 # 여기에 세빈이형 테스트 내용 넣으면 돼요
-ENVIRONMENTS=("RectangleEnv")
-ROBOT_NUM=(10 15 20 25 30)
+ENVIRONMENTS=("CircleEnv")
 DENSITY=(10 20)
+ROBOT_NUM=(10 15 20 25 30 40 60 80 100)
 BASE_COMMAND="./build/SI-CBS"
 
 # 여기는 건들지 말아주세요
 for env in "${ENVIRONMENTS[@]}"; do
+  for den in "${DENSITY[@]}"; do
     for rob in "${ROBOT_NUM[@]}"; do
-      for den in "${DENSITY[@]}"; do
-        for num in {0..49}; do
-            execute_with_timeout "$BASE_COMMAND -m $env -o $den -r $rob -t num"
-        done
+      for num in {0..49}; do
+          execute_with_timeout "$BASE_COMMAND -m $env -o $den -r $rob -t $num"
+      done
     done
   done
 done

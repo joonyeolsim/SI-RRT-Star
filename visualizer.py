@@ -4,12 +4,12 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
-from matplotlib.patches import Circle, Rectangle
+from matplotlib.patches import Circle
 
 sample = 10
 
 # 파일에서 데이터 읽기
-file_path = 'solution.txt'
+file_path = '/home/joonyeol/CLionProjects/SI-CBS/solution/CircleEnv_20/agents80/CircleEnv_20_80_1_solution.txt'
 with open(file_path, 'r') as file:
     data = file.readlines()
 
@@ -118,16 +118,26 @@ def animate(frame):
     return [time_text] + list(circles.values()) + annotations
 
 
+# def add_obstacles(ax, yaml_file_path):
+#     with open(yaml_file_path, 'r') as file:
+#         yaml_data = yaml.safe_load(file)
+#
+#     for obstacle_data in yaml_data['obstacles']:
+#         center = obstacle_data['center']
+#         width = obstacle_data['width']
+#         height = obstacle_data['height']
+#         rectangle = Rectangle((center[0] - width / 2, center[1] - height / 2), width, height, fc='black')
+#         ax.add_patch(rectangle)
+
 def add_obstacles(ax, yaml_file_path):
     with open(yaml_file_path, 'r') as file:
         yaml_data = yaml.safe_load(file)
 
     for obstacle_data in yaml_data['obstacles']:
         center = obstacle_data['center']
-        width = obstacle_data['width']
-        height = obstacle_data['height']
-        rectangle = Rectangle((center[0] - width / 2, center[1] - height / 2), width, height, fc='black')
-        ax.add_patch(rectangle)
+        radius = obstacle_data['radius']
+        circle = Circle((center[0], center[1]), radius, fc='black')
+        ax.add_patch(circle)
 
 
 # 기존 애니메이션 구성 코드는 그대로 유지
@@ -136,7 +146,7 @@ ax.set_xlim(0, 40)
 ax.set_ylim(0, 40)
 add_start_end_points(ax, agents)  # 시작점과 도착점, 에이전트 번호 추가
 
-yaml_file_path = "environment.yaml"
+yaml_file_path = "/home/joonyeol/CLionProjects/SI-CBS/benchmark/CircleEnv_20/agents80/CircleEnv_20_80_1.yaml"
 add_obstacles(ax, yaml_file_path)
 
 time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
