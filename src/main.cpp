@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
     max_expand_distances.emplace_back(5.0);
     velocities.emplace_back(0.5);
     thresholds.emplace_back(0.01);
-    iterations.emplace_back(1000);
+    iterations.emplace_back(2000);
     goal_sample_rates.emplace_back(10.0);
   }
 
@@ -90,8 +90,8 @@ int main(int argc, char* argv[]) {
     SIRRT sirrt(agent_id, env, constraint_table);
     auto path = sirrt.run();
     if (path.empty()) {
-    cout << "No solution for agent " << agent_id << endl;
-      return 0;
+      cout << "No solution for agent " << agent_id << endl;
+      return -1;
     }
     soluiton.emplace_back(path);
     sum_of_costs += get<1>(path.back());
