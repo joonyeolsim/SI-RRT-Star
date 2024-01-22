@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
     SIRRT sirrt(agent_id, env, constraint_table);
     auto path = sirrt.run();
     if (path.empty()) {
-      cout << "No solution for agent " << agent_id << endl;
+    cout << "No solution for agent " << agent_id << endl;
       return 0;
     }
     soluiton.emplace_back(path);

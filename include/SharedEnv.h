@@ -11,7 +11,7 @@ class SharedEnv {
  public:
   vector<double> max_expand_distances;
   vector<double> velocities;
-  const double epsilon = 0.01;
+  const double epsilon = 0.001;
   vector<int> iterations;
   vector<double> goal_sample_rates;
   int num_of_robots;

@@ -285,7 +285,7 @@ double ConstraintTable::getEarliestArrivalTimeSoft(int agent_id, const Point& fr
   return -1.0;
 }
 
-void ConstraintTable::insertToSafeIntervalTable(vector<Interval>& safe_intervals, double t_min, double t_max) {
+void ConstraintTable::insertToSafeIntervalTable(vector<Interval>& safe_intervals, double t_min, double t_max) const {
   assert(t_min >= 0.0 and t_min < t_max and !safe_intervals.empty());
   for (int i = 0; i < safe_intervals.size(); ++i) {
     if (t_min > get<1>(safe_intervals[i])) continue;
@@ -300,7 +300,7 @@ void ConstraintTable::insertToSafeIntervalTable(vector<Interval>& safe_intervals
       get<1>(safe_intervals[i]) = t_min;
     }
     if (t_min > get<0>(safe_intervals[i]) && t_max < get<1>(safe_intervals[i])) {
-      safe_intervals.emplace_back(t_max, get<1>(safe_intervals[i]));
+      safe_intervals.insert(safe_intervals.begin() + i + 1, make_tuple(t_max, get<1>(safe_intervals[i])));
       get<1>(safe_intervals[i]) = t_min;
     }
   }
