@@ -8,10 +8,10 @@ from matplotlib.patches import Circle, Rectangle
 
 sample = 10
 
-mapname = "Free"
-obs = "0"
-robotnum = "30"
-testnum = "1"
+mapname = "RectEnv"
+obs = "10"
+robotnum = "20"
+testnum = "3"
 
 benchmarkPath = "benchmark/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" + robotnum + "_" + testnum + ".yaml"
 solutionPath = "pp_solution/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" + robotnum + "_" + testnum + "_solution.txt"
