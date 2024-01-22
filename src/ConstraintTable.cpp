@@ -178,6 +178,7 @@ bool ConstraintTable::softConstrained(int agent_id, const Point& from_point, con
 // THIS FUNCTION IS FOR PRIORITIZED PLANNING
 void ConstraintTable::getSafeIntervalTablePath(int agent_id, const Point& to_point, double radius,
                                                vector<Interval>& safe_intervals) const {
+  assert(safe_intervals.empty());
   safe_intervals.emplace_back(0.0, numeric_limits<double>::max());
   for (auto occupied_agent_id = 0; occupied_agent_id < path_table.size(); ++occupied_agent_id) {
     if (occupied_agent_id == agent_id) continue;
@@ -188,11 +189,6 @@ void ConstraintTable::getSafeIntervalTablePath(int agent_id, const Point& to_poi
     for (int i = 0; i < path_table[occupied_agent_id].size() - 1; ++i) {
       auto [prev_point, prev_time] = path_table[occupied_agent_id][i];
       auto [next_point, next_time] = path_table[occupied_agent_id][i + 1];
-
-      // check if spatial constraint is satisfied
-      if (calculateDistance(prev_point, to_point) >=
-          calculateDistance(prev_point, next_point) + radius + env.radii[occupied_agent_id])
-        continue;
 
       vector<Point> interpolated_points;
       vector<double> interpolated_times;
