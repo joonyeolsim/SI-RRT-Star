@@ -260,31 +260,31 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
       if (earliest_arrival_time < 0.0) continue;
 
       // 가장 빠른 도착 시간이 neighbor의 interval보다 작다면 neighbor의 interval을 업데이트한다.
-      if (earliest_arrival_time < get<0>(neighbor->interval)) {
-        // earliest arrival time이 neighbor의 interval의 upper bound보다 크다면 새로운 노드 생성
-        if (get<1>(safe_interval) <= get<0>(neighbor->interval)) {
-          shared_ptr<LLNode> new_neighbor_node = make_shared<LLNode>(neighbor->point);
-          new_neighbor_node->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
-          new_neighbor_node->parent = new_node;
-          new_node->children.emplace_back(neighbor);
-          nodes.push_back(new_neighbor_node);
-        } else {
-          neighbor->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
-          neighbor->parent = new_node;
-          new_node->children.emplace_back(neighbor);
-        }
-        break;
-      }
       // if (earliest_arrival_time < get<0>(neighbor->interval)) {
-      //   neighbor->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
-      //   neighbor->parent.lock()->children.erase(
-      //       remove(neighbor->parent.lock()->children.begin(), neighbor->parent.lock()->children.end(), neighbor),
-      //       neighbor->parent.lock()->children.end());
-      //   neighbor->parent = new_node;
-      //   new_node->children.emplace_back(neighbor);
-      //   // propagateCostToSuccessor(neighbor, safe_interval_table);
+      //   // earliest arrival time이 neighbor의 interval의 upper bound보다 크다면 새로운 노드 생성
+      //   if (get<1>(safe_interval) <= get<0>(neighbor->interval)) {
+      //     shared_ptr<LLNode> new_neighbor_node = make_shared<LLNode>(neighbor->point);
+      //     new_neighbor_node->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
+      //     new_neighbor_node->parent = new_node;
+      //     new_node->children.emplace_back(neighbor);
+      //     nodes.push_back(new_neighbor_node);
+      //   } else {
+      //     neighbor->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
+      //     neighbor->parent = new_node;
+      //     new_node->children.emplace_back(neighbor);
+      //   }
       //   break;
       // }
+      if (earliest_arrival_time < get<0>(neighbor->interval)) {
+        neighbor->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
+        neighbor->parent.lock()->children.erase(
+            remove(neighbor->parent.lock()->children.begin(), neighbor->parent.lock()->children.end(), neighbor),
+            neighbor->parent.lock()->children.end());
+        neighbor->parent = new_node;
+        new_node->children.emplace_back(neighbor);
+        // propagateCostToSuccessor(neighbor, safe_interval_table);
+        break;
+      }
     }
   }
 }

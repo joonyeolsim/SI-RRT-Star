@@ -11,11 +11,11 @@ include_directories("include")
 find_package(Boost REQUIRED)
 
 # yaml-cpp 라이브러리 경로 설정
-set(YAML_CPP_INCLUDE_DIR "/opt/homebrew/Cellar/yaml-cpp/0.8.0/include")
-set(YAML_CPP_LIBRARIES "/opt/homebrew/Cellar/yaml-cpp/0.8.0/lib/libyaml-cpp.dylib")
+#set(YAML_CPP_INCLUDE_DIR "/opt/homebrew/Cellar/yaml-cpp/0.8.0/include")
+#set(YAML_CPP_LIBRARIES "/opt/homebrew/Cellar/yaml-cpp/0.8.0/lib/libyaml-cpp.dylib")
 
 # yaml-cpp 라이브러리 찾기 (선택적)
-# find_package(yaml-cpp REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 # Boost 및 yaml-cpp include 디렉토리 포함
 include_directories(${Boost_INCLUDE_DIRS})

@@ -9,8 +9,8 @@ from matplotlib.patches import Circle, Rectangle
 sample = 10
 
 mapname = "RectEnv"
-obs = "10"
-robotnum = "30"
+obs = "20"
+robotnum = "20"
 testnum = "5"
 
 benchmarkPath = "benchmark/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" + robotnum + "_" + testnum + ".yaml"
