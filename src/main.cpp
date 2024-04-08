@@ -1,15 +1,15 @@
-#include <yaml-cpp/yaml.h>
-
 #include "ConstraintTable.h"
 #include "SICBS.h"
 #include "SIRRT.h"
 #include "SharedEnv.h"
+#include "common.h"
 
 int main(int argc, char* argv[]) {
   string mapname;
   string obs;
   string robotnum;
   string testnum;
+  string algorithm;
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "-m") == 0 && i + 1 < argc) {
       mapname = argv[i + 1];
@@ -19,15 +19,17 @@ int main(int argc, char* argv[]) {
       robotnum = argv[i + 1];
     } else if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
       testnum = argv[i + 1];
+    } else if (strcmp(argv[i], "-a") == 0 && i + 1 < argc) {
+      algorithm = argv[i + 1];
     }
   }
 
   string benchmarkPath = "benchmark/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" +
                          robotnum + "_" + testnum + ".yaml";
-  string solutionPath = "pp_solution/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" +
+  string solutionPath = "solution/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" +
                         robotnum + "_" + testnum + "_solution.txt";
-  string dataPath = "pp_data/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" +
-                    robotnum + "_" + testnum + "_data.txt";
+  string dataPath = "data/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" + robotnum +
+                    "_" + testnum + "_data.txt";
   YAML::Node config = YAML::LoadFile(benchmarkPath);
 
   vector<shared_ptr<Obstacle>> obstacles;
@@ -61,9 +63,7 @@ int main(int argc, char* argv[]) {
   vector<double> thresholds;
   vector<int> iterations;
   vector<double> goal_sample_rates;
-  // srand(time(0));
   for (int i = 0; i < num_of_agents; ++i) {
-    // double randomValue = 0.25 + static_cast<double>(rand()) / (static_cast<double>(RAND_MAX / (1 - 0.25)));
     radii.emplace_back(0.5);
     max_expand_distances.emplace_back(5.0);
     velocities.emplace_back(0.5);
@@ -73,30 +73,34 @@ int main(int argc, char* argv[]) {
   }
 
   SharedEnv env = SharedEnv(num_of_agents, width, height, start_points, goal_points, radii, max_expand_distances,
-                            velocities, iterations, goal_sample_rates, obstacles);
-  // env.generateRandomInstance();
+                            velocities, iterations, goal_sample_rates, obstacles, algorithm);
   ConstraintTable constraint_table(env);
   Solution soluiton;
   auto start = std::chrono::high_resolution_clock::now();
-
-  // SI-CBS
-  // SICBS sicbs(env, constraint_table);
-  // soluiton = sicbs.run();
-
-  // SI-RRT PP
   double sum_of_costs = 0.0;
   double makespan = 0.0;
-  for (int agent_id = 0; agent_id < num_of_agents; ++agent_id) {
-    SIRRT sirrt(agent_id, env, constraint_table);
-    auto path = sirrt.run();
-    if (path.empty()) {
-      cout << "No solution for agent " << agent_id << endl;
-      return -1;
+
+  if (algorithm == "cbs") {
+    // SI-CCBS
+    SICBS sicbs(env, constraint_table);
+    soluiton = sicbs.run();
+    sum_of_costs = sicbs.sum_of_costs;
+    makespan = sicbs.makespan;
+  } else if (algorithm == "pp") {
+    // SI-CPP
+    for (int agent_id = 0; agent_id < num_of_agents; ++agent_id) {
+      SIRRT sirrt(agent_id, env, constraint_table);
+      auto path = sirrt.run();
+      while (path.empty()) {
+        cout << "Replanning for agent " << agent_id << endl;
+        path = sirrt.run();
+      }
+      cout << "Agent " << agent_id << " found a solution" << endl;
+      soluiton.emplace_back(path);
+      sum_of_costs += get<1>(path.back());
+      makespan = max(makespan, get<1>(path.back()));
+      constraint_table.path_table[agent_id] = path;
     }
-    soluiton.emplace_back(path);
-    sum_of_costs += get<1>(path.back());
-    makespan = max(makespan, get<1>(path.back()));
-    constraint_table.path_table[agent_id] = path;
   }
 
   auto stop = std::chrono::high_resolution_clock::now();
@@ -107,12 +111,6 @@ int main(int argc, char* argv[]) {
   cout << "computation time: " << duration.count() << endl;
   saveSolution(soluiton, solutionPath);
   saveData(sum_of_costs, makespan, duration.count(), dataPath);
-
-  // cout << "sum of cost: " << sicbs.sum_of_costs << endl;
-  // cout << "makespan: " << sicbs.makespan << endl;
-  // cout << "computation time: " << duration.count() << endl;
-  // saveSolution(soluiton, solutionPath);
-  // saveData(sicbs.sum_of_costs, sicbs.makespan, duration.count(), dataPath);
 
   return 0;
 }

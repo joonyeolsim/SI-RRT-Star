@@ -1,7 +1,3 @@
-//
-// Created by joonyeol on 23. 12. 7.
-//
-
 #ifndef COMMON_H
 #define COMMON_H
 
@@ -26,9 +22,9 @@ using namespace std;
 
 typedef tuple<double, double> Point;
 typedef vector<tuple<Point, double>> Path;
-typedef tuple<double, double> Interval;                     // (from_time_step, to_time_step)
-typedef tuple<int, int, tuple<Path, Path>> Conflict;  // (agent1, agent2, (trajectory1, trajectory2))
-typedef tuple<double, Path> Constraint;               // (occupied_radius, occupied_trajectory)
+typedef tuple<double, double> Interval;
+typedef tuple<int, int, tuple<Path, Path>> Conflict;
+typedef tuple<double, Path> Constraint;
 typedef vector<Path> Solution;
 
 void savePath(const Path& path, const string& filename);

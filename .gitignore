@@ -3,4 +3,3 @@ cmake-build-release
 build
 .idea
 .clang-format
-solution.txt

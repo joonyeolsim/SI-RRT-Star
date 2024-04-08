@@ -1,7 +1,3 @@
-//
-// Created by 심준열 on 12/12/23.
-//
-
 #ifndef SHAREDENV_H
 #define SHAREDENV_H
 
@@ -21,15 +17,16 @@ class SharedEnv {
   vector<Point> start_points;
   vector<Point> goal_points;
   vector<shared_ptr<Obstacle>> obstacles;
-  double time_resolution = 0.1;
+  double time_resolution = 1.0;
   // unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
   unsigned seed = 0;
   default_random_engine gen;
+  string algorithm;
 
   SharedEnv(int num_of_robots, int width, int height, const vector<Point>& start_points,
             const vector<Point>& goal_points, const vector<double>& radii, const vector<double>& max_expand_distances,
             const vector<double>& velocities, const vector<int>& iterations, const vector<double>& goal_sample_rates,
-            const vector<shared_ptr<Obstacle>>& obstacles)
+            const vector<shared_ptr<Obstacle>>& obstacles, string algorithm)
       : num_of_robots(num_of_robots),
         width(width),
         height(height),
@@ -41,6 +38,7 @@ class SharedEnv {
         iterations(iterations),
         goal_sample_rates(goal_sample_rates),
         obstacles(obstacles),
+        algorithm(std::move(algorithm)),
         gen(seed) {}
 
   void generateRandomInstance() {
