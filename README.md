@@ -37,7 +37,7 @@ sudo apt-get install g++ cmake libyaml-cpp-dev python3-matplotlib
 # -a is the algorithm (pp, cbs)
 
 # This command will run the SI-CPP algorithm on the CircleEnv with 10 obstacle density and 60 agents for the 0th instance.
-./build/SI-CBS -m CircleEnv -o 10 -r 60 -t 0 -a pp
+./build/SI-RRTStar -m CircleEnv -o 10 -r 60 -t 0 -a pp
 ```
 
 ### Visualize Results
