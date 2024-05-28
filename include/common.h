@@ -3,37 +3,42 @@
 
 #include <yaml-cpp/yaml.h>
 
-#include <algorithm>
 #include <boost/functional/hash.hpp>
 #include <boost/heap/fibonacci_heap.hpp>
-#include <cassert>
-#include <chrono>
-#include <climits>
 #include <cmath>
-#include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <random>
+#include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
 using namespace std;
 
-typedef tuple<double, double> Point;
-typedef vector<tuple<Point, double>> Path;
-typedef tuple<double, double> Interval;
-typedef tuple<int, int, tuple<Path, Path>> Conflict;
-typedef tuple<double, Path> Constraint;
-typedef vector<Path> Solution;
+using Point = std::tuple<double, double>;
+using Path = std::vector<std::tuple<Point, double> >;
+using Interval = std::tuple<double, double>;
+using Conflict = std::tuple<int, int, std::tuple<Path, Path> >;
+using Constraint = std::tuple<double, Path>;
+using Solution = std::vector<Path>;
 
-void savePath(const Path& path, const string& filename);
-void saveSolution(const Solution& solution, const string& filename);
-void saveData(double cost, double makespan, double duration, const string& filename);
+void openFile(ofstream &file, const string &filename);
+
+void writePath(ofstream &file, const Path &path);
+
+void savePath(const Path &path, const string &filename);
+
+void saveSolution(const Solution &solution, const string &filename);
+
+void saveData(double cost, double makespan, double duration, const string &filename);
+
 double calculateDistance(Point point1, Point point2);
 
 struct PointHash {
-  size_t operator()(const Point& point) const {
+  size_t operator()(const Point &point) const {
     auto [x, y] = point;
     size_t seed = 0;
     boost::hash_combine(seed, x);
@@ -45,19 +50,24 @@ struct PointHash {
 class Obstacle {
  public:
   Point point;
+
   Obstacle(double x, double y) : point(make_tuple(x, y)) {}
+
   virtual ~Obstacle() = default;
-  virtual bool constrained(const Point& other_point, const double other_radius) = 0;
+
+  virtual bool constrained(const Point &other_point, const double other_radius) = 0;
 };
 
 class RectangularObstacle : public Obstacle {
  public:
   double width, height;
+
   RectangularObstacle(double x, double y, double width, double height) : Obstacle(x, y), width(width), height(height) {}
-  bool constrained(const Point& other_point, const double other_radius) override {
-    const auto& [agentX, agentY] = other_point;
+
+  bool constrained(const Point &other_point, const double other_radius) override {
+    const auto &[agentX, agentY] = other_point;
     const double agentR = other_radius;
-    const auto& [x, y] = point;
+    const auto &[x, y] = point;
 
     double rectLeft = x - width / 2;
     double rectRight = x + width / 2;
@@ -81,8 +91,10 @@ class RectangularObstacle : public Obstacle {
 class CircularObstacle : public Obstacle {
  public:
   double radius;
+
   CircularObstacle(double x, double y, double radius) : Obstacle(x, y), radius(radius) {}
-  bool constrained(const Point& other_point, const double other_radius) override {
+
+  bool constrained(const Point &other_point, const double other_radius) override {
     return (calculateDistance(point, other_point) <= radius + other_radius);
   }
 };
