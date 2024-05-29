@@ -44,6 +44,7 @@ Path SIRRT::run() {
       continue;
     }
 
+    // TODO: Handling Goal node (remove target conflict)
     // SIRRT*
     vector<shared_ptr<LLNode>> neighbors;
     getNeighbors(new_point, neighbors);
@@ -65,7 +66,7 @@ Path SIRRT::run() {
     }
   }
 
-  if (goal_node != nullptr) {
+  if (goal_node != nullptr && best_earliest_arrival_time_step < numeric_limits<int>::max() / 2) {
     nodes.push_back(goal_node);
     path = updatePath(goal_node);
     return path;
