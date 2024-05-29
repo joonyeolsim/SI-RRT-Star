@@ -19,9 +19,9 @@
 using namespace std;
 
 using Point = std::tuple<double, double>;
-using Path = std::vector<std::tuple<Point, double> >;
-using Interval = std::tuple<double, double>;
-using Conflict = std::tuple<int, int, std::tuple<Path, Path> >;
+using Path = std::vector<std::tuple<Point, int>>;
+using Interval = std::pair<int, int>;
+using Conflict = std::tuple<int, int, std::tuple<Path, Path>>;
 using Constraint = std::tuple<double, Path>;
 using Solution = std::vector<Path>;
 

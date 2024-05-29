@@ -17,13 +17,13 @@ Solution SICBS::run() {
     cout << "Cost : " << curr_node.conflicts.size() << endl;
     open_list.pop();
 
-    if (curr_node.conflicts.empty()) {
-      sum_of_costs = curr_node.cost;
-      for (const auto& path : curr_node.solution) {
-        makespan = max(makespan, get<1>(path.back()));
-      }
-      return curr_node.solution;
-    }
+    // if (curr_node.conflicts.empty()) {
+    //   sum_of_costs = curr_node.cost;
+    //   for (const auto& path : curr_node.solution) {
+    //     makespan = max(makespan, get<1>(path.back()));
+    //   }
+    //   return curr_node.solution;
+    // }
 
     auto conflict = curr_node.conflicts[0];
     vector<int> agent_ids = {get<0>(conflict), get<1>(conflict)};

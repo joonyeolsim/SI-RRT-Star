@@ -10,6 +10,7 @@ class SharedEnv {
   const double epsilon = 0.001;
   vector<int> iterations;
   vector<double> goal_sample_rates;
+  int interpolation_step = 5;
   int num_of_robots;
   int width;
   int height;
@@ -17,7 +18,6 @@ class SharedEnv {
   vector<Point> start_points;
   vector<Point> goal_points;
   vector<shared_ptr<Obstacle>> obstacles;
-  double time_resolution = 1.0;
   // unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
   unsigned seed = 0;
   default_random_engine gen;

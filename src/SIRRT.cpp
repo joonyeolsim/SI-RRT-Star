@@ -5,29 +5,36 @@ Path SIRRT::run() {
   SafeIntervalTable safe_interval_table(env);
 
   // initialize start and goal safe intervals
-  vector<Interval> start_safe_intervals;
   if (env.algorithm == "pp")
-    constraint_table.getSafeIntervalTablePath(agent_id, start_point, env.radii[agent_id], start_safe_intervals);
+    constraint_table.getSafeIntervalTablePath(agent_id, start_point, env.radii[agent_id],
+                                              safe_interval_table.table[start_point]);
   else if (env.algorithm == "cbs")
-    constraint_table.getSafeIntervalTable(agent_id, start_point, env.radii[agent_id], start_safe_intervals);
-  assert(!start_safe_intervals.empty());
-  safe_interval_table.table[start_point] = {make_tuple(0.0, get<1>(start_safe_intervals.front()))};
+    constraint_table.getSafeIntervalTable(agent_id, start_point, env.radii[agent_id],
+                                          safe_interval_table.table[start_point]);
+  if (safe_interval_table.table[start_point].empty()) {
+    throw std::runtime_error("Safe interval table is empty for the start point.");
+  }
 
-  vector<Interval> goal_safe_intervals;
   if (env.algorithm == "pp")
-    constraint_table.getSafeIntervalTablePath(agent_id, goal_point, env.radii[agent_id], goal_safe_intervals);
+    constraint_table.getSafeIntervalTablePath(agent_id, goal_point, env.radii[agent_id],
+                                              safe_interval_table.table[goal_point]);
   else if (env.algorithm == "cbs")
-    constraint_table.getSafeIntervalTable(agent_id, goal_point, env.radii[agent_id], goal_safe_intervals);
-  assert(!goal_safe_intervals.empty());
-  safe_interval_table.table[goal_point] = {
-      make_tuple(get<0>(goal_safe_intervals.back()), numeric_limits<double>::infinity())};
+    constraint_table.getSafeIntervalTable(agent_id, goal_point, env.radii[agent_id],
+                                          safe_interval_table.table[goal_point]);
+  if (safe_interval_table.table[goal_point].empty()) {
+    throw std::runtime_error("Safe interval table is empty for the goal point.");
+  }
 
   // initialize start node
-  const auto start_node = make_shared<LLNode>(start_point);
-  start_node->interval = make_tuple(0.0, get<1>(start_safe_intervals.front()));
+  auto start_node = make_shared<LLNode>(start_point);
+  start_node->interval = make_pair(0, safe_interval_table.table[start_point].front().second);
   nodes.push_back(start_node);
 
-  double best_earliest_arrival_time = numeric_limits<double>::infinity();
+  // initialize goal node
+  auto goal_node = make_shared<LLNode>(goal_point);
+  goal_node->interval = make_pair(safe_interval_table.table[goal_point].back().first, numeric_limits<int>::max() / 2);
+
+  int best_earliest_arrival_time_step = numeric_limits<int>::max() / 2;
   int iteration = env.iterations[agent_id];
   while (iteration--) {
     Point random_point = generateRandomPoint();
@@ -40,9 +47,7 @@ Path SIRRT::run() {
     // SIRRT*
     vector<shared_ptr<LLNode>> neighbors;
     getNeighbors(new_point, neighbors);
-    if (neighbors.empty()) {
-      continue;
-    }
+    assert(!neighbors.empty());
     shared_ptr<LLNode> new_node = chooseParent(new_point, neighbors, safe_interval_table);
     if (new_node == nullptr) {
       continue;
@@ -51,9 +56,9 @@ Path SIRRT::run() {
 
     // check goal
     if (calculateDistance(new_node->point, goal_point) < env.epsilon) {
-      if (goal_node == nullptr || get<0>(new_node->interval) < best_earliest_arrival_time) {
+      if (goal_node == nullptr || new_node->interval.first < best_earliest_arrival_time_step) {
         goal_node = new_node;
-        best_earliest_arrival_time = get<0>(new_node->interval);
+        best_earliest_arrival_time_step = goal_node->interval.first;
       }
     } else {
       nodes.push_back(new_node);
@@ -82,7 +87,7 @@ shared_ptr<LLNode> SIRRT::getNearestNode(const Point& point) const {
     return nullptr;
   }
 
-  double min_distance = numeric_limits<double>::max();
+  double min_distance = numeric_limits<double>::max() / 2.0;
   shared_ptr<LLNode> nearest_node = nullptr;
 
   for (const auto& node : nodes) {
@@ -102,16 +107,16 @@ Point SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point& random_poin
       min(env.max_expand_distances[agent_id], calculateDistance(from_node->point, random_point));
   const double theta =
       atan2(get<1>(random_point) - get<1>(from_node->point), get<0>(random_point) - get<0>(from_node->point));
-  const double expand_time = expand_distance / env.velocities[agent_id];
-  const Point to_point = make_tuple(get<0>(from_node->point) + env.velocities[agent_id] * cos(theta) * expand_time,
-                                    get<1>(from_node->point) + env.velocities[agent_id] * sin(theta) * expand_time);
+  // dv = ds / dt
+  // dt = 1 because time step is 1
+  // dv = ds
+  const double velocity = expand_distance;
 
-  if (constraint_table.obstacleConstrained(agent_id, from_node->point, to_point, env.radii[agent_id])) {
+  const Point to_point = make_tuple(get<0>(from_node->point) + velocity * cos(theta),
+                                    get<1>(from_node->point) + velocity * sin(theta));
+
+  if (constraint_table.obstacleConstrained(to_point, env.radii[agent_id])) {
     return make_tuple(-1, -1);
-  }
-
-  if (calculateDistance(to_point, goal_point) < env.epsilon) {
-    return goal_point;
   }
 
   vector<Interval> safe_intervals;
@@ -120,7 +125,7 @@ Point SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point& random_poin
   else if (env.algorithm == "cbs")
     constraint_table.getSafeIntervalTable(agent_id, to_point, env.radii[agent_id], safe_intervals);
   if (safe_intervals.empty()) {
-    return make_tuple(-1.0, -1.0);
+    return make_tuple(-1, -1);
   }
   safe_interval_table.table[to_point] = safe_intervals;
 
@@ -130,20 +135,21 @@ Point SIRRT::steer(const shared_ptr<LLNode>& from_node, const Point& random_poin
 Path SIRRT::updatePath(const shared_ptr<LLNode>& goal_node) const {
   Path path;
   shared_ptr<LLNode> curr_node = goal_node;
-  while (curr_node->parent != nullptr) {
-    const auto prev_node = curr_node->parent;
-    const auto prev_time = get<0>(prev_node->interval);
-    const auto curr_time = get<0>(curr_node->interval);
-    assert(prev_time < curr_time);
 
-    const auto expand_time = calculateDistance(prev_node->point, curr_node->point) / env.velocities[agent_id];
-    path.emplace_back(curr_node->point, curr_time);
-    if (prev_time + expand_time + env.epsilon < curr_time) {
-      path.emplace_back(prev_node->point, curr_time - expand_time);
+  // Collect the path from goal to start and expand if needed
+  while (curr_node->parent != nullptr) {
+    // Add the current node to the path
+    path.emplace_back(curr_node->point, curr_node->interval.first);
+    int time_diff = curr_node->interval.first - curr_node->parent->interval.first;
+    for (int i = 1; i < time_diff; ++i) {
+      path.emplace_back(curr_node->point, curr_node->interval.first - i);
     }
     curr_node = curr_node->parent;
   }
-  path.emplace_back(curr_node->point, 0);
+  // Add the start node to the path
+  path.emplace_back(curr_node->point, curr_node->interval.first);
+
+  // Reverse the path to get it from start to goal
   reverse(path.begin(), path.end());
 
   assert(calculateDistance(get<0>(path.front()), start_point) < env.epsilon);
@@ -158,9 +164,7 @@ void SIRRT::getNeighbors(Point point, vector<shared_ptr<LLNode>>& neighbors) con
 
   const double connection_radius = env.max_expand_distances[agent_id] + env.epsilon;
   for (const auto& node : nodes) {
-    const double distance = calculateDistance(node->point, point);
-    if (distance < connection_radius) {
-      if (constraint_table.obstacleConstrained(agent_id, node->point, point, env.radii[agent_id])) continue;
+    if (calculateDistance(node->point, point) < connection_radius) {
       neighbors.emplace_back(node);
     }
   }
@@ -173,25 +177,26 @@ shared_ptr<LLNode> SIRRT::chooseParent(const Point& new_point, const vector<shar
   shared_ptr<LLNode> new_node = make_shared<LLNode>(new_point);
 
   for (const auto& neighbor : neighbors) {
-    const double expand_time = calculateDistance(neighbor->point, new_node->point) / env.velocities[agent_id];
-
-    const double lower_bound = get<0>(neighbor->interval) + expand_time;
-    const double upper_bound = get<1>(neighbor->interval) + expand_time;
+    // lower_bound is the earliest arrival time of the new node from the neighbor node
+    const int lower_bound = neighbor->interval.first + 1;
+    // upper_bound is the latest arrival time of the new node from the neighbor node
+    const int upper_bound = neighbor->interval.second + 1;
     assert(lower_bound > 0);
     assert(lower_bound < upper_bound);
 
     auto safe_intervals = safe_interval_table.table[new_node->point];
     for (auto& safe_interval : safe_intervals) {
-      if (lower_bound + env.epsilon >= get<1>(safe_interval)) continue;
-      if (upper_bound - env.epsilon <= get<0>(safe_interval)) break;
+      if (lower_bound >= safe_interval.second) continue;
+      if (upper_bound <= safe_interval.first) break;
 
-      const double earliest_arrival_time = constraint_table.getEarliestArrivalTime(
-          agent_id, neighbor->point, new_node->point, expand_time, max(get<0>(safe_interval), lower_bound),
-          min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
-      if (earliest_arrival_time < 0.0) continue;
+      // lower_bound를 높여가면서 중간에 충돌이 발생하는지 확인. 만약 충돌이 발생하지 않는다면, 해당 시간을 earliest arrival time으로 설정
+      const int earliest_arrival_time = constraint_table.getEarliestArrivalTime(
+          agent_id, neighbor->point, new_node->point, max(safe_interval.first, lower_bound),
+          min(safe_interval.second, upper_bound), env.radii[agent_id]);
+      if (earliest_arrival_time < 0) continue;
 
-      if (new_node->parent == nullptr || earliest_arrival_time < get<0>(new_node->interval)) {
-        new_node->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
+      if (new_node->parent == nullptr || earliest_arrival_time < new_node->interval.first) {
+        new_node->interval = make_pair(earliest_arrival_time, safe_interval.second);
         new_node->parent = neighbor;
       }
     }
@@ -206,33 +211,35 @@ shared_ptr<LLNode> SIRRT::chooseParent(const Point& new_point, const vector<shar
 void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
                    SafeIntervalTable& safe_interval_table) {
   assert(!neighbors.empty());
+
   for (auto& neighbor : neighbors) {
     if (neighbor == new_node->parent) continue;
-    const double expand_time = calculateDistance(new_node->point, neighbor->point) / env.velocities[agent_id];
 
-    const double lower_bound = get<0>(new_node->interval) + expand_time;
-    const double upper_bound = get<1>(new_node->interval) + expand_time;
+    // lower_bound is the earliest arrival time of the neighbor node from the new node
+    const int lower_bound = get<0>(new_node->interval) + 1;
+    // upper_bound is the latest arrival time of the neighbor node from the new node
+    const int upper_bound = get<1>(new_node->interval) + 1;
     assert(lower_bound > 0);
     assert(lower_bound < upper_bound);
 
     auto safe_intervals = safe_interval_table.table[neighbor->point];
     for (auto& safe_interval : safe_intervals) {
-      if (lower_bound + env.epsilon >= get<1>(safe_interval)) continue;
-      if (upper_bound - env.epsilon <= get<0>(safe_interval)) break;
+      if (lower_bound >= safe_interval.second) continue;
+      if (upper_bound <= safe_interval.first) break;
 
-      const double earliest_arrival_time = constraint_table.getEarliestArrivalTime(
-          agent_id, new_node->point, neighbor->point, expand_time, max(get<0>(safe_interval), lower_bound),
-          min(get<1>(safe_interval), upper_bound), env.radii[agent_id]);
-      if (earliest_arrival_time < 0.0) continue;
+      const int earliest_arrival_time = constraint_table.getEarliestArrivalTime(
+          agent_id, new_node->point, neighbor->point, max(safe_interval.first, lower_bound),
+          min(safe_interval.second, upper_bound), env.radii[agent_id]);
+      if (earliest_arrival_time < 0) continue;
 
-      if (earliest_arrival_time < get<0>(neighbor->interval)) {
-        if (get<1>(safe_interval) <= get<0>(neighbor->interval)) {
+      if (earliest_arrival_time < neighbor->interval.first) {
+        if (safe_interval.second <= neighbor->interval.first) {
           shared_ptr<LLNode> new_neighbor_node = make_shared<LLNode>(neighbor->point);
-          new_neighbor_node->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
+          new_neighbor_node->interval = make_pair(earliest_arrival_time, safe_interval.second);
           new_neighbor_node->parent = new_node;
           nodes.push_back(new_neighbor_node);
         } else {
-          neighbor->interval = make_tuple(earliest_arrival_time, get<1>(safe_interval));
+          neighbor->interval = make_pair(earliest_arrival_time, safe_interval.second);
           neighbor->parent = new_node;
         }
         break;

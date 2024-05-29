@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
   vector<double> goal_sample_rates;
   for (int i = 0; i < num_of_agents; ++i) {
     radii.emplace_back(0.5);
-    max_expand_distances.emplace_back(5.0);
+    max_expand_distances.emplace_back(0.5);
     velocities.emplace_back(0.5);
     thresholds.emplace_back(0.01);
     iterations.emplace_back(1500);
@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
       cout << "Agent " << agent_id << " found a solution" << endl;
       soluiton.emplace_back(path);
       sum_of_costs += get<1>(path.back());
-      makespan = max(makespan, get<1>(path.back()));
+      // makespan = max(makespan, get<1>(path.back()));
       constraint_table.path_table[agent_id] = path;
     }
   }
