@@ -1,12 +1,16 @@
 #include "ConstraintTable.h"
 
-bool ConstraintTable::obstacleConstrained(const Point& point, double radius) const {
-  for (const auto& obstacle : env.obstacles) {
-    if (obstacle->constrained(point, radius)) return true;
+bool ConstraintTable::obstacleConstrained(int agent_id, const Point& from_point, const Point& to_point, double radius) const {
+  vector<Point> interpolated_points;
+  interpolatePoint(agent_id, from_point, to_point, interpolated_points);
+  for (auto& interpolated_point : interpolated_points) {
+    for (const auto& obstacle : env.obstacles) {
+      if (obstacle->constrained(interpolated_point, radius)) return true;
+    }
   }
   return false;
 }
-
+                                                     
 bool ConstraintTable::targetConstrained(int agent_id, const Point& point, int timestep, double radius) const {
   for (auto occupied_agent_id = 0; occupied_agent_id < path_table.size(); ++occupied_agent_id) {
     // continue if the agent is the same
@@ -233,17 +237,17 @@ void ConstraintTable::insertCollisionIntervalToSIT(vector<Interval>& safe_interv
   }
 }
 
-// void ConstraintTable::interpolatePoint(const Point& from_point, const Point& to_point, vector<Point>& interpolated_points) const {
-//   interpolated_points.clear();
-//
-//   for (int step = 0; step < env.interpolation_step; ++step) {
-//     double ratio = static_cast<double>(step) / env.interpolation_step;
-//     Point interpolated_point = make_tuple(
-//       get<0>(from_point) + ratio * (get<0>(to_point) - get<0>(from_point)),
-//       get<1>(from_point) + ratio * (get<1>(to_point) - get<1>(from_point))
-//     );
-//     interpolated_points.emplace_back(interpolated_point);
-//   }
-//
-//   assert(interpolated_points.size() == env.interpolation_step);
-// }
+void ConstraintTable::interpolatePoint(const int agent_id, const Point& from_point, const Point& to_point, vector<Point>& interpolated_points) const {
+  interpolated_points.clear();
+  int interpolation_step = env.max_expand_distances[agent_id] / env.max_distances_per_timestep[agent_id];
+  for (int step = 0; step < interpolation_step; ++step) {
+    double ratio = static_cast<double>(step) / interpolation_step;
+    Point interpolated_point = make_tuple(
+      get<0>(from_point) + ratio * (get<0>(to_point) - get<0>(from_point)),
+      get<1>(from_point) + ratio * (get<1>(to_point) - get<1>(from_point))
+    );
+    interpolated_points.emplace_back(interpolated_point);
+  }
+
+  assert(interpolated_points.size() == env.interpolation_step);
+}

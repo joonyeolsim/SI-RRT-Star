@@ -37,6 +37,8 @@ void saveData(double cost, double makespan, double duration, const string &filen
 
 double calculateDistance(Point point1, Point point2);
 
+bool checkConflicts(const Solution &solution, const vector<double> &radii);
+
 struct PointHash {
   size_t operator()(const Point &point) const {
     auto [x, y] = point;

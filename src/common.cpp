@@ -63,3 +63,27 @@ void saveData(double cost, double makespan, double duration, const string& filen
 double calculateDistance(Point point1, Point point2) {
   return hypot(get<0>(point1) - get<0>(point2), get<1>(point1) - get<1>(point2));
 }
+
+bool checkConflicts(const Solution &solution, const vector<double> &radii) {
+  for (size_t i = 0; i < solution.size(); ++i) {
+    const Path &path1 = solution[i];
+    double radius1 = radii[i];
+
+    for (size_t j = i + 1; j < solution.size(); ++j) {
+      const Path &path2 = solution[j];
+      double radius2 = radii[j];
+      size_t max_length = max(path1.size(), path2.size());
+
+      for (size_t t = 0; t < max_length; ++t) {
+        Point point1 = (t < path1.size()) ? get<0>(path1[t]) : get<0>(path1.back());
+        Point point2 = (t < path2.size()) ? get<0>(path2[t]) : get<0>(path2.back());
+
+        if (calculateDistance(point1, point2) <= (radius1 + radius2)) {
+          return true; // Conflict detected
+        }
+      }
+    }
+  }
+  return false; // No conflict detected
+}
+

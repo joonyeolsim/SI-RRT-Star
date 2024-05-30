@@ -59,20 +59,22 @@ int main(int argc, char* argv[]) {
   int height = 40;
   vector<double> radii;
   vector<double> max_expand_distances;
+  vector<double> max_distances_per_timestep;
   vector<double> velocities;
   vector<double> thresholds;
   vector<int> iterations;
   vector<double> goal_sample_rates;
   for (int i = 0; i < num_of_agents; ++i) {
     radii.emplace_back(0.5);
-    max_expand_distances.emplace_back(0.5);
+    max_distances_per_timestep.emplace_back(1.0);
+    max_expand_distances.emplace_back(1.0 * 5);
     velocities.emplace_back(0.5);
     thresholds.emplace_back(0.01);
     iterations.emplace_back(1500);
     goal_sample_rates.emplace_back(10.0);
   }
 
-  SharedEnv env = SharedEnv(num_of_agents, width, height, start_points, goal_points, radii, max_expand_distances,
+  SharedEnv env = SharedEnv(num_of_agents, width, height, start_points, goal_points, radii, max_expand_distances, max_distances_per_timestep,
                             velocities, iterations, goal_sample_rates, obstacles, algorithm);
   ConstraintTable constraint_table(env);
   Solution soluiton;
@@ -103,6 +105,9 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  if (checkConflicts(soluiton, radii)) {
+    cout << "Conflict exists" << endl;
+  }
   auto stop = std::chrono::high_resolution_clock::now();
   chrono::duration<double, std::ratio<1>> duration = stop - start;
 

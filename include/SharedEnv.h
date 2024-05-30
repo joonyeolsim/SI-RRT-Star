@@ -6,11 +6,11 @@
 class SharedEnv {
  public:
   vector<double> max_expand_distances;
+  vector<double> max_distances_per_timestep;
   vector<double> velocities;
   const double epsilon = 0.1;
   vector<int> iterations;
   vector<double> goal_sample_rates;
-  int interpolation_step = 5;
   int num_of_robots;
   int width;
   int height;
@@ -25,7 +25,7 @@ class SharedEnv {
 
   SharedEnv(int num_of_robots, int width, int height, const vector<Point>& start_points,
             const vector<Point>& goal_points, const vector<double>& radii, const vector<double>& max_expand_distances,
-            const vector<double>& velocities, const vector<int>& iterations, const vector<double>& goal_sample_rates,
+            const vector<double>& max_distances_per_timestep, const vector<double>& velocities, const vector<int>& iterations, const vector<double>& goal_sample_rates,
             const vector<shared_ptr<Obstacle>>& obstacles, string algorithm)
       : num_of_robots(num_of_robots),
         width(width),
@@ -34,6 +34,7 @@ class SharedEnv {
         goal_points(goal_points),
         radii(radii),
         max_expand_distances(max_expand_distances),
+        max_distances_per_timestep(max_distances_per_timestep),
         velocities(velocities),
         iterations(iterations),
         goal_sample_rates(goal_sample_rates),
