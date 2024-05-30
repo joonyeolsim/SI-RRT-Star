@@ -49,20 +49,25 @@ Path SIRRT::run() {
     vector<shared_ptr<LLNode>> neighbors;
     getNeighbors(new_point, neighbors);
     assert(!neighbors.empty());
-    shared_ptr<LLNode> new_node = chooseParent(new_point, neighbors, safe_interval_table);
-    if (new_node == nullptr) {
+    vector<shared_ptr<LLNode>> new_nodes = chooseParent(new_point, neighbors, safe_interval_table);
+    if (new_nodes.empty()) {
       continue;
     }
-    rewire(new_node, neighbors, safe_interval_table);
+    // for (auto& new_node : new_nodes) {
+    //   rewire(new_node, neighbors, safe_interval_table);
+    // }
 
     // check goal
-    if (calculateDistance(new_node->point, goal_point) < env.epsilon) {
-      if (goal_node == nullptr || new_node->interval.first < best_earliest_arrival_time_step) {
-        goal_node = new_node;
-        best_earliest_arrival_time_step = goal_node->interval.first;
+    for (auto& new_node : new_nodes) {
+      if (calculateDistance(new_node->point, goal_point) < env.epsilon) {
+        if (safe_interval_table.table[goal_point].back().first <= new_node->interval.first &&
+          new_node->interval.first < best_earliest_arrival_time_step) {
+          goal_node = new_node;
+          best_earliest_arrival_time_step = goal_node->interval.first;
+        }
+      } else {
+        nodes.push_back(new_node);
       }
-    } else {
-      nodes.push_back(new_node);
     }
   }
 
@@ -171,43 +176,93 @@ void SIRRT::getNeighbors(Point point, vector<shared_ptr<LLNode>>& neighbors) con
   }
 }
 
-shared_ptr<LLNode> SIRRT::chooseParent(const Point& new_point, const vector<shared_ptr<LLNode>>& neighbors,
+vector<shared_ptr<LLNode>> SIRRT::chooseParent(const Point& new_point, const vector<shared_ptr<LLNode>>& neighbors,
                                        SafeIntervalTable& safe_interval_table) const {
   assert(!neighbors.empty());
 
-  shared_ptr<LLNode> new_node = make_shared<LLNode>(new_point);
+  auto new_nodes = vector<shared_ptr<LLNode>>();
+  auto safe_intervals = safe_interval_table.table[new_point];
 
-  for (const auto& neighbor : neighbors) {
-    // lower_bound is the earliest arrival time of the new node from the neighbor node
-    const int lower_bound = neighbor->interval.first + 1;
-    // upper_bound is the latest arrival time of the new node from the neighbor node
-    const int upper_bound = neighbor->interval.second + 1;
-    assert(lower_bound > 0);
-    assert(lower_bound < upper_bound);
+  for (auto& safe_interval : safe_intervals) {
+    shared_ptr<LLNode> new_node = make_shared<LLNode>(new_point);
+    // set the safe interval of the new node of the current safe interval
+    new_node->interval = make_pair(safe_interval.first, safe_interval.second);
 
-    auto safe_intervals = safe_interval_table.table[new_node->point];
-    for (auto& safe_interval : safe_intervals) {
+    for (const auto& neighbor : neighbors) {
+      // lower_bound is the earliest arrival time of the new node from the neighbor node
+      const int lower_bound = neighbor->interval.first + 1;
+      // upper_bound is the latest arrival time of the new node from the neighbor node
+      const int upper_bound = neighbor->interval.second + 1;
+      assert(lower_bound > 0);
+      assert(lower_bound < upper_bound);
+
+      // safe interval간의 overlap이 없다면, neighbor로부터 new_node까지 이동할 수 없음.
       if (lower_bound >= safe_interval.second) continue;
-      if (upper_bound <= safe_interval.first) break;
+      if (upper_bound <= safe_interval.first) continue;
+
+      int earliest_arrival_time = max(safe_interval.first, lower_bound);
+      if (earliest_arrival_time >= min(safe_interval.second, upper_bound)) continue;
+
+      // 이미 new_node의 부모가 있고, lower_bound가 new_node의 earliest arrival time보다 크다면, 더 이상 확인할 필요가 없음
+      if (new_node->parent && earliest_arrival_time >= new_node->interval.first) continue;
 
       // lower_bound를 높여가면서 중간에 충돌이 발생하는지 확인. 만약 충돌이 발생하지 않는다면, 해당 시간을 earliest arrival time으로 설정
-      const int earliest_arrival_time = constraint_table.getEarliestArrivalTime(
-          agent_id, neighbor->point, new_node->point, max(safe_interval.first, lower_bound),
-          min(safe_interval.second, upper_bound), env.radii[agent_id]);
-      if (earliest_arrival_time < 0) continue;
+      // const int earliest_arrival_time = constraint_table.getEarliestArrivalTime(
+      //     agent_id, neighbor->point, new_node->point, max(safe_interval.first, lower_bound),
+      //     min(safe_interval.second, upper_bound), env.radii[agent_id]);
+      // if (earliest_arrival_time < 0) continue;
 
-      if (new_node->parent == nullptr || earliest_arrival_time < new_node->interval.first) {
-        new_node->interval = make_pair(earliest_arrival_time, safe_interval.second);
-        new_node->parent = neighbor;
-      }
+      // new_node의 부모가 없거나, earliest arrival time이 더 빠르다면, new_node의 부모를 neighbor로 설정
+      new_node->interval.first = earliest_arrival_time;
+      new_node->parent = neighbor;
+    }
+
+    // new_node의 부모가 있다면 new_nodes에 추가
+    if (new_node->parent) {
+      new_nodes.push_back(new_node);
     }
   }
 
-  if (new_node->parent == nullptr) {
-    return nullptr;
-  }
-  return new_node;
+  return new_nodes;
 }
+
+// shared_ptr<LLNode> SIRRT::chooseParent(const Point& new_point, const vector<shared_ptr<LLNode>>& neighbors,
+//                                        SafeIntervalTable& safe_interval_table) const {
+//   assert(!neighbors.empty());
+//
+//   shared_ptr<LLNode> new_node = make_shared<LLNode>(new_point);
+//
+//   for (const auto& neighbor : neighbors) {
+//     // lower_bound is the earliest arrival time of the new node from the neighbor node
+//     const int lower_bound = neighbor->interval.first + 1;
+//     // upper_bound is the latest arrival time of the new node from the neighbor node
+//     const int upper_bound = neighbor->interval.second + 1;
+//     assert(lower_bound > 0);
+//     assert(lower_bound < upper_bound);
+//
+//     auto safe_intervals = safe_interval_table.table[new_node->point];
+//     for (auto& safe_interval : safe_intervals) {
+//       if (lower_bound >= safe_interval.second) continue;
+//       if (upper_bound <= safe_interval.first) break;
+//
+//       // lower_bound를 높여가면서 중간에 충돌이 발생하는지 확인. 만약 충돌이 발생하지 않는다면, 해당 시간을 earliest arrival time으로 설정
+//       const int earliest_arrival_time = constraint_table.getEarliestArrivalTime(
+//           agent_id, neighbor->point, new_node->point, max(safe_interval.first, lower_bound),
+//           min(safe_interval.second, upper_bound), env.radii[agent_id]);
+//       if (earliest_arrival_time < 0) continue;
+//
+//       if (new_node->parent == nullptr || earliest_arrival_time < new_node->interval.first) {
+//         new_node->interval = make_pair(earliest_arrival_time, safe_interval.second);
+//         new_node->parent = neighbor;
+//       }
+//     }
+//   }
+//
+//   if (new_node->parent == nullptr) {
+//     return nullptr;
+//   }
+//   return new_node;
+// }
 
 void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors,
                    SafeIntervalTable& safe_interval_table) {

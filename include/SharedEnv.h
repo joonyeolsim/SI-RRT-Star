@@ -7,7 +7,7 @@ class SharedEnv {
  public:
   vector<double> max_expand_distances;
   vector<double> velocities;
-  const double epsilon = 0.001;
+  const double epsilon = 0.1;
   vector<int> iterations;
   vector<double> goal_sample_rates;
   int interpolation_step = 5;
