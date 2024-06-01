@@ -196,7 +196,7 @@ bool ConstraintTable::targetConstrained(int agent_id, const Point& from_point, c
 void ConstraintTable::getSafeIntervalTablePath(int agent_id, const Point& to_point, double radius,
                                                vector<Interval>& safe_intervals) const {
   assert(safe_intervals.empty());
-  safe_intervals.emplace_back(0.0, numeric_limits<double>::max());
+  safe_intervals.emplace_back(0.0, numeric_limits<double>::infinity());
   for (auto occupied_agent_id = 0; occupied_agent_id < path_table.size(); ++occupied_agent_id) {
     if (occupied_agent_id == agent_id) continue;
     if (path_table[occupied_agent_id].empty()) continue;
@@ -212,24 +212,20 @@ void ConstraintTable::getSafeIntervalTablePath(int agent_id, const Point& to_poi
       interpolatePointTime(occupied_agent_id, prev_point, next_point, prev_time, next_time, interpolated_points,
                            interpolated_times);
       for (int j = 0; j < interpolated_points.size(); ++j) {
-        if (calculateDistance(to_point, interpolated_points[j]) < radius + env.radii[occupied_agent_id] + env.epsilon &
-            is_safe) {
+        if (is_safe && calculateDistance(to_point, interpolated_points[j]) < radius + env.radii[occupied_agent_id] + env.epsilon) {
           is_safe = false;
           collision_start_time = interpolated_times[j];
-        } else if (calculateDistance(to_point, interpolated_points[j]) >=
-                       radius + env.radii[occupied_agent_id] + env.epsilon &
-                   !is_safe) {
+        } else if (!is_safe && calculateDistance(to_point, interpolated_points[j]) >= radius + env.radii[occupied_agent_id] + env.epsilon) {
           is_safe = true;
           assert(collision_start_time < interpolated_times[j]);
-          insertToSafeIntervalTable(safe_intervals, collision_start_time - env.time_resolution,
-                                    interpolated_times[j] + env.time_resolution);
+          insertCollisionIntervalToSIT(safe_intervals, collision_start_time, interpolated_times[j]);
           if (safe_intervals.empty()) return;
         }
       }
     }
     if (!is_safe) {  // target conflict
-      insertToSafeIntervalTable(safe_intervals, collision_start_time - env.time_resolution,
-                                numeric_limits<double>::max());
+      insertCollisionIntervalToSIT(safe_intervals, collision_start_time - env.time_resolution,
+                                numeric_limits<double>::infinity());
       if (safe_intervals.empty()) return;
     }
   }
@@ -238,7 +234,7 @@ void ConstraintTable::getSafeIntervalTablePath(int agent_id, const Point& to_poi
 void ConstraintTable::getSafeIntervalTable(int agent_id, const Point& to_point, double radius,
                                            vector<Interval>& safe_intervals) const {
   assert(safe_intervals.empty());
-  safe_intervals.emplace_back(0.0, numeric_limits<double>::max());
+  safe_intervals.emplace_back(0.0, numeric_limits<double>::infinity());
   for (auto [constrained_radius, constrained_path] : hard_constraint_table[agent_id]) {
     bool is_safe = true;
     double collision_start_time = 0.0;
@@ -259,14 +255,14 @@ void ConstraintTable::getSafeIntervalTable(int agent_id, const Point& to_point, 
                    !is_safe) {
           is_safe = true;
           assert(collision_start_time < interpolated_times[j]);
-          insertToSafeIntervalTable(safe_intervals, collision_start_time - env.time_resolution,
+          insertCollisionIntervalToSIT(safe_intervals, collision_start_time - env.time_resolution,
                                     interpolated_times[j] + env.time_resolution);
           if (safe_intervals.empty()) return;
         }
       }
     }
     if (!is_safe) {
-      insertToSafeIntervalTable(safe_intervals, collision_start_time - env.time_resolution,
+      insertCollisionIntervalToSIT(safe_intervals, collision_start_time - env.time_resolution,
                                 get<1>(constrained_path.back()) + env.time_resolution);
       if (safe_intervals.empty()) return;
     }
@@ -293,20 +289,37 @@ double ConstraintTable::getEarliestArrivalTime(int agent_id, const Point& from_p
   return -1.0;
 }
 
-void ConstraintTable::insertToSafeIntervalTable(vector<Interval>& safe_intervals, double t_min, double t_max) const {
-  assert(t_min >= 0.0 and t_min < t_max and !safe_intervals.empty());
-  for (int i = 0; i < safe_intervals.size(); ++i) {
-    if (t_min > get<1>(safe_intervals[i])) continue;
-    if (t_max < get<0>(safe_intervals[i])) break;
-    if (t_min <= get<0>(safe_intervals[i]) && t_max >= get<1>(safe_intervals[i])) {
+void ConstraintTable::insertCollisionIntervalToSIT(vector<Interval>& safe_intervals, double t_min, double t_max) const {
+  assert(t_min >= 0 && t_min < t_max && !safe_intervals.empty());
+
+  int i = 0;
+  while (i < safe_intervals.size()) {
+    if (t_min >= safe_intervals[i].second) {
+      // Collision interval is after the current safe interval
+      ++i;
+      continue;
+    }
+    if (t_max <= safe_intervals[i].first) {
+      // Collision interval is before the current safe interval
+      break;
+    }
+
+    if (t_min <= safe_intervals[i].first && t_max >= safe_intervals[i].second) {
+      // Collision interval completely covers the current safe interval
       safe_intervals.erase(safe_intervals.begin() + i);
-    } else if (t_min <= get<0>(safe_intervals[i]) && t_max < get<1>(safe_intervals[i])) {
-      get<0>(safe_intervals[i]) = t_max;
-    } else if (t_min > get<0>(safe_intervals[i]) && t_max >= get<1>(safe_intervals[i])) {
-      get<1>(safe_intervals[i]) = t_min;
-    } else if (t_min > get<0>(safe_intervals[i]) && t_max < get<1>(safe_intervals[i])) {
-      safe_intervals.insert(safe_intervals.begin() + i + 1, make_tuple(t_max, get<1>(safe_intervals[i])));
-      get<1>(safe_intervals[i]) = t_min;
+    } else if (t_min <= safe_intervals[i].first && t_max < safe_intervals[i].second) {
+      // Collision interval covers the beginning of the current safe interval
+      safe_intervals[i].first = t_max;
+      ++i;
+    } else if (t_min > safe_intervals[i].first && t_max >= safe_intervals[i].second) {
+      // Collision interval covers the end of the current safe interval
+      safe_intervals[i].second = t_min;
+      ++i;
+    } else if (t_min > safe_intervals[i].first && t_max < safe_intervals[i].second) {
+      // Collision interval covers the middle of the current safe interval
+      safe_intervals.insert(safe_intervals.begin() + i + 1, {t_max, safe_intervals[i].second});
+      safe_intervals[i].second = t_min;
+      ++i;
     }
   }
 }
