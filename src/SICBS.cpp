@@ -173,14 +173,14 @@ void SICBS::findConflicts(const Solution& solution, vector<Conflict>& conflicts)
         auto agent1_point = prev_point1;
         if (agent1_theta != 0.0) {
           agent1_point =
-              make_tuple(get<0>(prev_point1) + env.velocities[agent1_id] * cos(agent1_theta) * agent1_expand_time,
-                         get<1>(prev_point1) + env.velocities[agent1_id] * sin(agent1_theta) * agent1_expand_time);
+              make_tuple(get<0>(prev_point1) + 1 * cos(agent1_theta) * agent1_expand_time,
+                         get<1>(prev_point1) + 1 * sin(agent1_theta) * agent1_expand_time);
         }
         auto agent2_point = prev_point2;
         if (agent2_theta != 0.0) {
           agent2_point =
-              make_tuple(get<0>(prev_point2) + env.velocities[agent2_id] * cos(agent2_theta) * agent2_expand_time,
-                         get<1>(prev_point2) + env.velocities[agent2_id] * sin(agent2_theta) * agent2_expand_time);
+              make_tuple(get<0>(prev_point2) + 1 * cos(agent2_theta) * agent2_expand_time,
+                         get<1>(prev_point2) + 1 * sin(agent2_theta) * agent2_expand_time);
         }
 
         if (calculateDistance(agent1_point, agent2_point) < env.radii[agent1_id] + env.radii[agent2_id] & is_safe) {

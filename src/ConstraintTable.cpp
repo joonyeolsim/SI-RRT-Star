@@ -15,7 +15,8 @@ bool ConstraintTable::obstacleConstrained(int agent_id, const Point& from_point,
 bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, const Point& to_point, double from_time,
                                       double to_time, double radius) const {
   assert(from_time < to_time);
-  const double expand_distance = calculateDistance(from_point, to_point);
+  const auto expand_time = 1.0;
+  const auto velcotiy_from2to = calculateDistance(from_point, to_point) / expand_time;
   for (auto occupied_agent_id = 0; occupied_agent_id < path_table.size(); ++occupied_agent_id) {
     if (occupied_agent_id == agent_id) continue;
     if (path_table[occupied_agent_id].empty()) continue;
@@ -25,34 +26,13 @@ bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, con
       auto [next_point, next_time] = path_table[occupied_agent_id][i + 1];
 
       // check if temporal constraint is satisfied
-      if (prev_time > to_time || from_time >= next_time) continue;
-      // check if spatial constraint is satisfied
-      const Point center1 =
-          make_tuple((get<0>(from_point) + get<0>(to_point)) / 2.0, (get<1>(from_point) + get<1>(to_point)) / 2.0);
-      const double radius1 = calculateDistance(from_point, to_point) / 2.0 + env.radii[agent_id];
-      const Point center2 =
-          make_tuple((get<0>(prev_point) + get<0>(next_point)) / 2.0, (get<1>(prev_point) + get<1>(next_point)) / 2.0);
-      const double radius2 = calculateDistance(prev_point, next_point) / 2.0 + env.radii[occupied_agent_id];
-      if (calculateDistance(center1, center2) > radius1 + radius2) continue;
+      if (next_time <= from_time) continue;
+      if (prev_time >= to_time) break;
 
-      // set check time
-      double start_time = -1.0;
-      double end_time = -1.0;
-      if (prev_time <= from_time && next_time <= to_time) {
-        start_time = from_time;
-        end_time = next_time;
-      } else if (prev_time <= from_time && next_time >= to_time) {
-        start_time = from_time;
-        end_time = to_time;
-      } else if (prev_time >= from_time && next_time <= to_time) {
-        start_time = prev_time;
-        end_time = next_time;
-      } else if (prev_time >= from_time && next_time >= to_time) {
-        start_time = prev_time;
-        end_time = to_time;
-      } else {
-        assert(false);
-      }
+      double start_time = max(from_time, prev_time);
+      double end_time = min(to_time, next_time);
+
+      const auto velcotiy_prev2next = calculateDistance(prev_point, next_point) / expand_time;
 
       auto curr_time = start_time;
       while (curr_time < end_time) {
@@ -65,8 +45,8 @@ bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, con
         auto occupied_point = prev_point;
         if (occupied_theta != 0.0) {
           occupied_point = make_tuple(
-              get<0>(prev_point) + env.velocities[occupied_agent_id] * cos(occupied_theta) * occupied_expand_time,
-              get<1>(prev_point) + env.velocities[occupied_agent_id] * sin(occupied_theta) * occupied_expand_time);
+              get<0>(prev_point) + velcotiy_prev2next * cos(occupied_theta) * occupied_expand_time,
+              get<1>(prev_point) + velcotiy_prev2next * sin(occupied_theta) * occupied_expand_time);
         }
 
         // get point2 at start_time
@@ -76,8 +56,8 @@ bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, con
 
         auto point = from_point;
         if (theta != 0.0) {
-          point = make_tuple(get<0>(from_point) + env.velocities[agent_id] * cos(theta) * expand_time,
-                             get<1>(from_point) + env.velocities[agent_id] * sin(theta) * expand_time);
+          point = make_tuple(get<0>(from_point) + velcotiy_from2to * cos(theta) * expand_time,
+                             get<1>(from_point) + velcotiy_from2to * sin(theta) * expand_time);
         }
 
         if (calculateDistance(point, occupied_point) < radius + env.radii[occupied_agent_id] + env.epsilon) {
@@ -139,8 +119,8 @@ bool ConstraintTable::hardConstrained(int agent_id, const Point& from_point, con
         auto occupied_point = prev_point;
         if (occupied_theta != 0.0) {
           occupied_point =
-              make_tuple(get<0>(prev_point) + env.velocities[agent_id] * cos(occupied_theta) * occupied_expand_time,
-                         get<1>(prev_point) + env.velocities[agent_id] * sin(occupied_theta) * occupied_expand_time);
+              make_tuple(get<0>(prev_point) + expand_distance * cos(occupied_theta),
+                         get<1>(prev_point) + expand_distance * sin(occupied_theta));
         }
 
         // get point2 at start_time
@@ -150,15 +130,15 @@ bool ConstraintTable::hardConstrained(int agent_id, const Point& from_point, con
 
         auto point = from_point;
         if (theta != 0.0) {
-          point = make_tuple(get<0>(from_point) + env.velocities[agent_id] * cos(theta) * expand_time,
-                             get<1>(from_point) + env.velocities[agent_id] * sin(theta) * expand_time);
+          point = make_tuple(get<0>(from_point) + expand_distance * cos(theta),
+                             get<1>(from_point) + expand_distance * sin(theta));
         }
 
         if (calculateDistance(point, occupied_point) < radius + constrained_radius + env.epsilon) {
           return true;
         }
 
-        curr_time += env.time_resolution;
+        curr_time += 1.0;
       }
     }
   }
@@ -175,12 +155,7 @@ bool ConstraintTable::targetConstrained(int agent_id, const Point& from_point, c
     // target conflict
     auto [last_point, last_time] = path_table[occupied_agent_id].back();
     // check if temporal constraint is satisfied
-    if (last_time > to_time) continue;
-    // check if spatial constraint is satisfied
-    const Point center1 =
-        make_tuple((get<0>(from_point) + get<0>(to_point)) / 2.0, (get<1>(from_point) + get<1>(to_point)) / 2.0);
-    const double radius1 = calculateDistance(from_point, to_point) / 2.0 + env.radii[agent_id];
-    if (calculateDistance(center1, last_point) > radius1 + env.radii[occupied_agent_id]) continue;
+    if (last_time >= to_time) continue;
 
     for (int i = 0; i < interpolated_points.size(); ++i) {
       if (last_time > interpolated_times[i]) continue;
@@ -224,8 +199,7 @@ void ConstraintTable::getSafeIntervalTablePath(int agent_id, const Point& to_poi
       }
     }
     if (!is_safe) {  // target conflict
-      insertCollisionIntervalToSIT(safe_intervals, collision_start_time - env.time_resolution,
-                                numeric_limits<double>::infinity());
+      insertCollisionIntervalToSIT(safe_intervals, collision_start_time, numeric_limits<double>::infinity());
       if (safe_intervals.empty()) return;
     }
   }
@@ -274,7 +248,7 @@ double ConstraintTable::getEarliestArrivalTime(int agent_id, const Point& from_p
                                                double radius) const {
   double earliest_arrival_time = lower_bound;
   double from_time = earliest_arrival_time - expand_time;
-  while (earliest_arrival_time + env.epsilon < upper_bound) {
+  while (earliest_arrival_time < upper_bound) {
     if (env.algorithm == "pp") {
       if (targetConstrained(agent_id, from_point, to_point, from_time, earliest_arrival_time, radius)) return -1.0;
       if (!pathConstrained(agent_id, from_point, to_point, from_time, earliest_arrival_time, radius))
@@ -283,8 +257,8 @@ double ConstraintTable::getEarliestArrivalTime(int agent_id, const Point& from_p
       if (!hardConstrained(agent_id, from_point, to_point, from_time, earliest_arrival_time, radius))
         return earliest_arrival_time;
     }
-    earliest_arrival_time += env.time_resolution;
-    from_time += env.time_resolution;
+    earliest_arrival_time += 1.0;
+    from_time += 1.0;
   }
   return -1.0;
 }
@@ -326,46 +300,44 @@ void ConstraintTable::insertCollisionIntervalToSIT(vector<Interval>& safe_interv
 
 void ConstraintTable::interpolatePoint(int agent_id, const Point& from_point, const Point& to_point,
                                        vector<Point>& interpolated_points) const {
-  const double expand_distance = calculateDistance(from_point, to_point);
+  const double velocity = calculateDistance(from_point, to_point);
+  const auto expand_time = 1.0;
   const double theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
-  interpolated_points.emplace_back(from_point);
 
-  const auto timesteps = static_cast<int>(floor(expand_distance / env.velocities[agent_id]));
-  for (int timestep = 1; timestep < timesteps; ++timestep) {
-    Point interpoated_point = from_point;
+  double elapsed_time = 0.0;
+  while (elapsed_time < expand_time / env.time_resolution) {
+    Point interpolated_point = from_point;
     if (theta != 0.0) {
-      interpoated_point = make_tuple(get<0>(from_point) + env.velocities[agent_id] * cos(theta) * timestep,
-                                     get<1>(from_point) + env.velocities[agent_id] * sin(theta) * timestep);
+      interpolated_point = make_tuple(get<0>(from_point) + velocity * cos(theta) * elapsed_time,
+                                      get<1>(from_point) + velocity * sin(theta) * elapsed_time);
     }
-    interpolated_points.emplace_back(interpoated_point);
+    interpolated_points.emplace_back(interpolated_point);
+    elapsed_time += env.time_resolution;
   }
-  interpolated_points.emplace_back(to_point);
 
   assert(!interpolated_points.empty());
 }
 
 void ConstraintTable::interpolatePointTime(int agent_id, const Point& from_point, const Point& to_point,
                                            double from_time, double to_time, vector<Point>& interpolated_points,
-                                           vector<double>& interpoated_times) const {
+                                           vector<double>& interpolated_times) const {
   assert(from_time < to_time);
-  const double expand_distance = calculateDistance(from_point, to_point);
+  const double velocity = calculateDistance(from_point, to_point);
+  const auto expand_time = 1.0;
   const double theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
-  interpolated_points.emplace_back(from_point);
-  interpoated_times.emplace_back(from_time);
 
-  const auto timesteps = static_cast<int>(floor(expand_distance / env.velocities[agent_id]));
-  for (int timestep = 1; timestep < timesteps; ++timestep) {
-    Point interpoated_point = from_point;
+  double elapsed_time = 0.0;
+  while (elapsed_time < to_time - from_time) {
+    Point interpolated_point = from_point;
     if (theta != 0.0) {
-      interpoated_point = make_tuple(get<0>(from_point) + env.velocities[agent_id] * cos(theta) * timestep,
-                                     get<1>(from_point) + env.velocities[agent_id] * sin(theta) * timestep);
+      interpolated_point = make_tuple(get<0>(from_point) + velocity * cos(theta) * elapsed_time,
+                                      get<1>(from_point) + velocity * sin(theta) * elapsed_time);
     }
-    interpolated_points.emplace_back(interpoated_point);
-    interpoated_times.emplace_back(from_time + timestep);
+    interpolated_points.emplace_back(interpolated_point);
+    interpolated_times.emplace_back(from_time + elapsed_time);
+    elapsed_time += env.time_resolution;
   }
-  interpolated_points.emplace_back(to_point);
-  interpoated_times.emplace_back(to_time);
 
   assert(!interpolated_points.empty());
-  assert(interpolated_points.size() == interpoated_times.size());
+  assert(interpolated_points.size() == interpolated_times.size());
 }

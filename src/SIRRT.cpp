@@ -136,7 +136,8 @@ Path SIRRT::updatePath(const shared_ptr<LLNode>& goal_node) const {
     const auto curr_time = curr_node->earliest_arrival_time;
     assert(prev_time < curr_time);
 
-    const auto expand_time = calculateDistance(prev_node->point, curr_node->point) / env.velocities[agent_id];
+    // const auto expand_time = calculateDistance(prev_node->point, curr_node->point) / env.velocities[agent_id];
+    const auto expand_time = 1.0;
     path.emplace_back(curr_node->point, curr_time);
     if (prev_time + expand_time + env.epsilon < curr_time) {
       path.emplace_back(prev_node->point, curr_time - expand_time);
@@ -180,7 +181,8 @@ vector<shared_ptr<LLNode>> SIRRT::chooseParent(const Point& new_point, const vec
     auto new_node = make_shared<LLNode>(new_point, safe_interval.first, safe_interval.second);
 
     for (const auto& neighbor : neighbors) {
-      const double expand_time = calculateDistance(neighbor->point, new_node->point) / env.velocities[agent_id];
+      // const double expand_time = calculateDistance(neighbor->point, new_node->point) / env.velocities[agent_id];
+      const double expand_time = 1.0;
 
       const double lower_bound = neighbor->earliest_arrival_time + expand_time;
       const double upper_bound = neighbor->interval.second + expand_time;
@@ -210,7 +212,8 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
   assert(!neighbors.empty());
   for (auto& neighbor : neighbors) {
     if (neighbor == new_node->parent) continue;
-    const double expand_time = calculateDistance(new_node->point, neighbor->point) / env.velocities[agent_id];
+    // const double expand_time = calculateDistance(new_node->point, neighbor->point) / env.velocities[agent_id];
+    const double expand_time = 1.0;
 
     const double lower_bound = new_node->earliest_arrival_time + expand_time;
     const double upper_bound = new_node->interval.second + expand_time;

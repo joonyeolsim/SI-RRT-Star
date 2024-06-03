@@ -6,8 +6,8 @@
 class SharedEnv {
  public:
   vector<double> max_expand_distances;
-  vector<double> velocities;
   const double epsilon = 0.001;
+  double time_resolution = 0.1;
   vector<int> iterations;
   vector<double> goal_sample_rates;
   int num_of_robots;
@@ -17,7 +17,6 @@ class SharedEnv {
   vector<Point> start_points;
   vector<Point> goal_points;
   vector<shared_ptr<Obstacle>> obstacles;
-  double time_resolution = 1.0;
   // unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
   unsigned seed = 0;
   default_random_engine gen;
@@ -25,7 +24,7 @@ class SharedEnv {
 
   SharedEnv(int num_of_robots, int width, int height, const vector<Point>& start_points,
             const vector<Point>& goal_points, const vector<double>& radii, const vector<double>& max_expand_distances,
-            const vector<double>& velocities, const vector<int>& iterations, const vector<double>& goal_sample_rates,
+            const vector<int>& iterations, const vector<double>& goal_sample_rates,
             const vector<shared_ptr<Obstacle>>& obstacles, string algorithm)
       : num_of_robots(num_of_robots),
         width(width),
@@ -34,7 +33,6 @@ class SharedEnv {
         goal_points(goal_points),
         radii(radii),
         max_expand_distances(max_expand_distances),
-        velocities(velocities),
         iterations(iterations),
         goal_sample_rates(goal_sample_rates),
         obstacles(obstacles),

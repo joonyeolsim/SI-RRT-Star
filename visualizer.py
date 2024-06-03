@@ -35,12 +35,10 @@ def interpolate_path(path):
     return interpolated_path
 
 
-def add_start_end_points(ax, agents):
-    for agent_id, path in agents.items():
-        if not path:
-            continue
-        start_x, start_y, _ = path[0]
-        end_x, end_y, _ = path[-1]
+def add_start_end_points(ax, start_points, goal_points):
+    for agent_id, (start, goal) in enumerate(zip(start_points, goal_points)):
+        start_x, start_y = start
+        end_x, end_y = goal
         ax.plot(start_x, start_y, 'go')
         ax.plot(end_x, end_y, 'ro')
 
@@ -89,6 +87,16 @@ def animate(frame):
         if not path:
             agent_annotations[agent_id].set_visible(False)
             continue
+
+        # 속도를 거리 기반으로 조정
+        if frame < len(path) - 1:
+            x0, y0, t0 = path[frame]
+            x1, y1, t1 = path[frame + 1]
+            distance = np.linalg.norm(np.array((x1, y1)) - np.array((x0, y0)))
+            speed = distance
+        else:
+            speed = 1  # 마지막 위치에서는 속도를 1로 유지
+
         position = next(((x, y) for x, y, t in path if t >= time), path[-1][:2])
         circle = circles[agent_id]
         circle.center = position
@@ -107,7 +115,7 @@ def animate(frame):
 
 
 if __name__ == '__main__':
-    sample = 10
+    sample = 50
 
     # get mapname obs robotnum testnum using argparse
     parser = argparse.ArgumentParser()
@@ -127,12 +135,18 @@ if __name__ == '__main__':
     benchmarkPath = "benchmark/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" + robotnum + "_" + testnum + ".yaml"
     solutionPath = "solution/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" + robotnum + "_" + testnum + "_solution.txt"
 
+    with open(benchmarkPath, 'r') as file:
+        benchmark_data = yaml.safe_load(file)
+
+    start_points = benchmark_data["startPoints"]
+    goal_points = benchmark_data["goalPoints"]
+
     with open(solutionPath, 'r') as file:
-        data = file.readlines()
+        solution_data = file.readlines()
 
     radii = [0.5 for _ in range(100)]
 
-    agents, no_path_agents = parse_data(data)
+    agents, no_path_agents = parse_data(solution_data)
 
     print(f'Agents without a path: {no_path_agents}')
     print(f'Number of agents: {len(agents)}')
@@ -145,7 +159,7 @@ if __name__ == '__main__':
     fig, ax = plt.subplots(figsize=(10, 10))
     ax.set_xlim(0, 40)
     ax.set_ylim(0, 40)
-    add_start_end_points(ax, agents)
+    add_start_end_points(ax, start_points, goal_points)
 
     if mapname == "RectEnv":
         add_rect_obstacles(ax, benchmarkPath)
@@ -166,4 +180,8 @@ if __name__ == '__main__':
                                               visible=True)
 
     ani = animation.FuncAnimation(fig, animate, frames=int(total_time * sample), init_func=init, blit=True, interval=1)
+
+    # 애니메이션을 mp4 파일로 저장
+    ani.save('animation.mp4', writer='ffmpeg', fps=60)
+
     plt.show()
