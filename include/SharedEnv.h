@@ -8,6 +8,7 @@ class SharedEnv {
   vector<double> max_expand_distances;
   const double epsilon = 0.001;
   double time_resolution = 0.1;
+  double expand_time = 5.0;
   vector<int> iterations;
   vector<double> goal_sample_rates;
   int num_of_robots;
