@@ -26,8 +26,7 @@ class ConstraintTable {
   void getSafeIntervalTablePath(int agent_id, const Point& to_point, double radius,
                                 vector<Interval>& safe_intervals) const;
   void getSafeIntervalTable(int agent_id, const Point& to_point, double radius, vector<Interval>& safe_intervals) const;
-  double getEarliestArrivalTime(int agent_id, const Point& from_point, const Point& to_point, double expand_time,
-                                double lower_bound, double upper_bound, double radius) const;
+  double getEarliestArrivalTime(int agent_id, const Point& from_point, const Point& to_point, double lower_bound, double upper_bound, double radius) const;
   void insertCollisionIntervalToSIT(vector<Interval>& safe_intervals, double t_min, double t_max) const;
   void interpolatePoint(int agent_id, const Point& from_point, const Point& to_point,
                         vector<Point>& interpoate_points) const;
