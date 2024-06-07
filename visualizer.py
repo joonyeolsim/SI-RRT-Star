@@ -20,7 +20,7 @@ mapname = args.mapname
 obs = args.obs
 robotnum = args.robotnum
 testnum = args.testnum
-interval = 0.05
+interval = 0.025
 
 benchmarkPath = f"benchmark/{mapname}_{obs}/agents{robotnum}/{mapname}_{obs}_{robotnum}_{testnum}.yaml"
 solutionPath = f"solution/{mapname}_{obs}/agents{robotnum}/{mapname}_{obs}_{robotnum}_{testnum}_solution.txt"
@@ -135,7 +135,7 @@ def update(frame):
 
 
 # Calculate the speed multiplier to keep the animation speed consistent
-animation_interval = interval * 50 / 0.1
+animation_interval = interval * 10 / 0.1
 
 ani = FuncAnimation(fig, update, frames=num_frames, init_func=init, blit=True, interval=animation_interval)
 
