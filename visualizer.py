@@ -1,187 +1,142 @@
 import argparse
 import re
 
-import matplotlib.animation as animation
+import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
-from matplotlib.patches import Circle, Rectangle
+from matplotlib.animation import FuncAnimation
 
+# Argument parser
+parser = argparse.ArgumentParser()
+parser.add_argument("--mapname", "-m", type=str, required=True, help="Name of the map")
+parser.add_argument("--obs", "-o", type=str, required=True, help="Obstacle configuration")
+parser.add_argument("--robotnum", "-r", type=str, required=True, help="Number of robots")
+parser.add_argument("--testnum", "-t", type=str, required=True, help="Test number")
+parser.add_argument("--interval", "-i", type=float, default=0.1, help="Time interval for updates")
+args = parser.parse_args()
 
-def parse_data(data):
-    agents = {}
-    no_path_agents = []
-    for line in data:
-        match = re.match(r'Agent (\d+):', line)
-        if match:
-            agent_id = int(match.group(1))
-            points = re.findall(r'\(([^)]+)\)', line)
-            if points:
-                agents[agent_id] = [tuple(map(float, point.split(','))) for point in points]
-            else:
-                no_path_agents.append(agent_id)
-    return agents, no_path_agents
+mapname = args.mapname
+obs = args.obs
+robotnum = args.robotnum
+testnum = args.testnum
+interval = 0.05
 
+benchmarkPath = f"benchmark/{mapname}_{obs}/agents{robotnum}/{mapname}_{obs}_{robotnum}_{testnum}.yaml"
+solutionPath = f"solution/{mapname}_{obs}/agents{robotnum}/{mapname}_{obs}_{robotnum}_{testnum}_solution.txt"
 
-def interpolate_path(path):
-    interpolated_path = []
-    for i in range(len(path) - 1):
-        x0, y0, t0 = path[i]
-        x1, y1, t1 = path[i + 1]
-        times = np.linspace(t0, t1, int((t1 - t0) * sample))
-        xs = np.linspace(x0, x1, len(times))
-        ys = np.linspace(y0, y1, len(times))
-        interpolated_path.extend(list(zip(xs, ys, times)))
-    return interpolated_path
+# Load the YAML file
+with open(benchmarkPath, 'r') as f:
+    data = yaml.load(f, Loader=yaml.FullLoader)
 
+# Load the solution file
+with open(solutionPath, 'r') as f:
+    solution = f.read()
 
-def add_start_end_points(ax, start_points, goal_points):
-    for agent_id, (start, goal) in enumerate(zip(start_points, goal_points)):
-        start_x, start_y = start
-        end_x, end_y = goal
-        ax.plot(start_x, start_y, 'go')
-        ax.plot(end_x, end_y, 'ro')
+# Parse paths for each agent
+paths = []
+for path_str in solution.split('Agent')[1:]:
+    path = []
+    for point_str in re.findall(r'\(.*?\)', path_str):
+        x, y, t = map(float, point_str.strip('()').split(','))
+        path.append((x, y, t))
+    paths.append(path)
 
-        # 에이전트 번호 추가
-        ax.text(start_x, start_y, f'{agent_id}', color='black', fontsize=8)
-        ax.text(end_x, end_y, f'{agent_id}', color='black', fontsize=8)
+# Parse obstacles
+obstacles = data.get('obstacles', [])
 
+# Calculate number of animation frames
+max_time = max(point[2] for path in paths for point in path)
+num_frames = int(max_time / interval) + 1
 
-def add_rect_obstacles(ax, yaml_file_path):
-    with open(yaml_file_path, 'r') as file:
-        yaml_data = yaml.safe_load(file)
+# Initialize plot
+fig, ax = plt.subplots(figsize=(8, 8))
+radius = 0.5  # Fixed radius for agents
+agents = [patches.Circle((0, 0), radius, color='blue', fill=True) for _ in range(len(paths))]
+agent_labels = [ax.text(0, 0, '', fontsize=8, color='white', ha='center', va='center') for _ in range(len(paths))]
+time_text = ax.text(0.005, 0.995, '', transform=ax.transAxes, horizontalalignment='left', verticalalignment='top')
 
-    for obstacle_data in yaml_data['obstacles']:
-        center = obstacle_data['center']
-        width = obstacle_data['width']
-        height = obstacle_data['height']
-        rectangle = Rectangle((center[0] - width / 2, center[1] - height / 2), width, height, fc='black')
-        ax.add_patch(rectangle)
+# Add agents to the plot
+for agent in agents:
+    ax.add_patch(agent)
 
+# Mark start and goal points with agent ID
+for i, path in enumerate(paths):
+    start_x, start_y, _ = path[0]
+    goal_x, goal_y, _ = path[-1]
+    ax.plot(start_x, start_y, marker='s', markersize=10, color='green')
+    ax.plot(goal_x, goal_y, marker='*', markersize=10, color='red')
+    ax.text(start_x, start_y, f'S{i}', fontsize=8, color='black', ha='right', va='bottom')
+    ax.text(goal_x, goal_y, f'G{i}', fontsize=8, color='black', ha='right', va='bottom')
 
-def add_circ_obstacles(ax, yaml_file_path):
-    with open(yaml_file_path, 'r') as file:
-        yaml_data = yaml.safe_load(file)
-
-    for obstacle_data in yaml_data['obstacles']:
-        center = obstacle_data['center']
-        radius = obstacle_data['radius']
-        circle = Circle((center[0], center[1]), radius, fc='black')
+# Add obstacles to the plot
+for obs in obstacles:
+    if 'radius' in obs:
+        circle = patches.Circle(obs['center'], obs['radius'], color='gray', fill=True)
         ax.add_patch(circle)
+    elif 'width' in obs and 'height' in obs:
+        rect = patches.Rectangle((obs['center'][0] - obs['width'] / 2, obs['center'][1] - obs['height'] / 2),
+            obs['width'], obs['height'], color='gray', fill=True)
+        ax.add_patch(rect)
 
 
 def init():
-    time_text.set_text('')
-    for agent_id, path in agents.items():
-        if path:  # 경로가 있는 경우에만 초기화
-            circle = circles[agent_id]
-            circle.center = (0, 0)
-            ax.text(0, 0, str(agent_id), color='black', fontsize=8, ha='center', va='center')
-    return [time_text] + list(circles.values())
-
-
-def animate(frame):
-    time = frame / sample
-    time_text.set_text(f'Time: {time:.2f}s')
-    for agent_id, path in agents.items():
-        if not path:
-            agent_annotations[agent_id].set_visible(False)
-            continue
-
-        # 속도를 거리 기반으로 조정
-        if frame < len(path) - 1:
-            x0, y0, t0 = path[frame]
-            x1, y1, t1 = path[frame + 1]
-            distance = np.linalg.norm(np.array((x1, y1)) - np.array((x0, y0)))
-            speed = distance
-        else:
-            speed = 1  # 마지막 위치에서는 속도를 1로 유지
-
-        position = next(((x, y) for x, y, t in path if t >= time), path[-1][:2])
-        circle = circles[agent_id]
-        circle.center = position
-        agent_annotations[agent_id].set_position(position)
-
-    for agent_id, circle in circles.items():
-        circle.set_facecolor('blue')
-        for other_agent_id, other_circle in circles.items():
-            if agent_id == other_agent_id:
-                continue
-            if np.linalg.norm(np.array(circle.center) - np.array(other_circle.center)) < radii[agent_id] * 0.85 + radii[
-                other_agent_id] * 0.85:
-                circle.set_facecolor('red')
-                print(f'Collision between agents {agent_id} and {other_agent_id} at time {time:.2f}s')
-    return [time_text] + list(circles.values()) + list(agent_annotations.values())
-
-
-if __name__ == '__main__':
-    sample = 50
-
-    # get mapname obs robotnum testnum using argparse
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("--mapname", "-m", type=str)
-    parser.add_argument("--obs", "-o", type=str)
-    parser.add_argument("--robotnum", "-r", type=str)
-    parser.add_argument("--testnum", "-t", type=str)
-
-    args = parser.parse_args()
-
-    mapname = args.mapname
-    obs = args.obs
-    robotnum = args.robotnum
-    testnum = args.testnum
-
-    benchmarkPath = "benchmark/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" + robotnum + "_" + testnum + ".yaml"
-    solutionPath = "solution/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" + robotnum + "_" + testnum + "_solution.txt"
-
-    with open(benchmarkPath, 'r') as file:
-        benchmark_data = yaml.safe_load(file)
-
-    start_points = benchmark_data["startPoints"]
-    goal_points = benchmark_data["goalPoints"]
-
-    with open(solutionPath, 'r') as file:
-        solution_data = file.readlines()
-
-    radii = [0.5 for _ in range(100)]
-
-    agents, no_path_agents = parse_data(solution_data)
-
-    print(f'Agents without a path: {no_path_agents}')
-    print(f'Number of agents: {len(agents)}')
-
-    for agent_id, path in agents.items():
-        agents[agent_id] = interpolate_path(path)
-
-    total_time = max([path[-1][2] for path in agents.values() if path])
-
-    fig, ax = plt.subplots(figsize=(10, 10))
     ax.set_xlim(0, 40)
     ax.set_ylim(0, 40)
-    add_start_end_points(ax, start_points, goal_points)
+    ax.set_aspect('equal')
+    for agent in agents:
+        agent.center = (0, 0)
+        agent.set_color('blue')  # Reset color to blue in init
+    for label in agent_labels:
+        label.set_text('')
+    time_text.set_text('')
+    return agents + agent_labels + [time_text]
 
-    if mapname == "RectEnv":
-        add_rect_obstacles(ax, benchmarkPath)
-    else:
-        add_circ_obstacles(ax, benchmarkPath)
 
-    time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
-    circles = {}
-    for agent_id, path in agents.items():
-        if path:
-            radius = radii[agent_id] * 0.9
-            circles[agent_id] = Circle((0, 0), radius, fc='blue')
-        ax.add_patch(circles.get(agent_id, Circle((0, 0), 0)))
+def update_agents_positions(current_time):
+    for i, path in enumerate(paths):
+        for j in range(len(path) - 1):
+            if path[j][2] <= current_time < path[j + 1][2]:
+                start = np.array(path[j][:2])
+                end = np.array(path[j + 1][:2])
+                ratio = (current_time - path[j][2]) / (path[j + 1][2] - path[j][2])
+                current_x = start[0] + ratio * (end[0] - start[0])
+                current_y = start[1] + ratio * (end[1] - start[1])
+                agents[i].center = (current_x, current_y)
+                agent_labels[i].set_text(str(i))
+                agent_labels[i].set_position((current_x, current_y))
+                break
+        else:
+            current_x, current_y = path[-1][:2]
+            agents[i].center = (current_x, current_y)
+            agent_labels[i].set_text(str(i))
+            agent_labels[i].set_position((current_x, current_y))
 
-    agent_annotations = {}
-    for agent_id in agents.keys():
-        agent_annotations[agent_id] = ax.text(0, 0, str(agent_id), color='white', fontsize=8, ha='center', va='center',
-                                              visible=True)
 
-    ani = animation.FuncAnimation(fig, animate, frames=int(total_time * sample), init_func=init, blit=True, interval=1)
+def detect_collisions(current_time):
+    for i, agent1 in enumerate(agents):
+        for j, agent2 in enumerate(agents):
+            if i != j:
+                distance = np.linalg.norm(np.array(agent1.center) - np.array(agent2.center))
+                if distance < 2 * radius:
+                    agents[i].set_color('red')
+                    agents[j].set_color('red')
+                    print(f"Collision detected between agent {i} and agent {j} at time {current_time:.2f}")
 
-    # 애니메이션을 mp4 파일로 저장
-    ani.save('animation.mp4', writer='ffmpeg', fps=60)
 
-    plt.show()
+def update(frame):
+    current_time = frame * interval
+    time_text.set_text(f'Time: {current_time:.2f}')
+
+    update_agents_positions(current_time)
+    detect_collisions(current_time)
+
+    return agents + agent_labels + [time_text]
+
+
+# Calculate the speed multiplier to keep the animation speed consistent
+animation_interval = interval * 50 / 0.1
+
+ani = FuncAnimation(fig, update, frames=num_frames, init_func=init, blit=True, interval=animation_interval)
+
+plt.show()
