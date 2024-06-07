@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
   vector<double> goal_sample_rates;
   for (int i = 0; i < num_of_agents; ++i) {
     radii.emplace_back(0.5 * 1.1);
-    max_expand_distances.emplace_back(10.0);
+    max_expand_distances.emplace_back(5.0);
     thresholds.emplace_back(0.01);
     iterations.emplace_back(1000);
     goal_sample_rates.emplace_back(10.0);
@@ -102,6 +102,10 @@ int main(int argc, char* argv[]) {
 
   auto stop = std::chrono::high_resolution_clock::now();
   chrono::duration<double, std::ratio<1>> duration = stop - start;
+
+  if (constraint_table.checkConflicts(soluiton)) {
+    cout << "Conflict exists" << endl;
+  }
 
   cout << "sum of cost: " << sum_of_costs << endl;
   cout << "makespan: " << makespan << endl;

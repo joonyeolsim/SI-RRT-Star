@@ -55,9 +55,8 @@ Path SIRRT::run() {
           assert(goal_node->interval.second == new_node->interval.second);
           goal_node = new_node;
         }
-      } else {
-        nodes.push_back(new_node);
       }
+      nodes.push_back(new_node);
     }
   }
 

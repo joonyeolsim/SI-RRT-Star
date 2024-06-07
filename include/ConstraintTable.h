@@ -32,5 +32,6 @@ class ConstraintTable {
                         vector<Point>& interpoate_points) const;
   void interpolatePointTime(int agent_id, const Point& from_point, const Point& to_point, double from_time,
                             double to_time, vector<Point>& interpoate_points, vector<double>& interpoate_times) const;
+  bool checkConflicts(const Solution &solution) const;
 };
 #endif  // CONSTRAINTTABLE_H
