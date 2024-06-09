@@ -54,6 +54,7 @@ Path SIRRT::run() {
           assert(goal_node->interval.first == new_node->interval.first);
           assert(goal_node->interval.second == new_node->interval.second);
           goal_node = new_node;
+          best_arrival_time = goal_node->earliest_arrival_time;
         }
       }
       nodes.push_back(new_node);
@@ -176,11 +177,13 @@ vector<shared_ptr<LLNode>> SIRRT::chooseParent(const Point& new_point, const vec
 
   for (auto& safe_interval : safe_interval_table.table[new_point]) {
     auto new_node = make_shared<LLNode>(new_point, safe_interval.first, safe_interval.second);
+    if (new_node->interval.first >= best_arrival_time) continue;
 
     for (const auto& neighbor : neighbors) {
       const double lower_bound = neighbor->earliest_arrival_time + env.edge_moving_time;
       const double upper_bound = neighbor->interval.second + env.edge_moving_time;
 
+      if (lower_bound >= best_arrival_time) continue;
       if (lower_bound >= new_node->interval.second) continue;
       if (upper_bound <= new_node->interval.first) continue;
 
@@ -209,6 +212,7 @@ void SIRRT::rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<L
     const double lower_bound = new_node->earliest_arrival_time + env.edge_moving_time;
     const double upper_bound = new_node->interval.second + env.edge_moving_time;
 
+    if (lower_bound >= best_arrival_time) continue;
     if (lower_bound >= neighbor->interval.second) continue;
     if (upper_bound <= neighbor->interval.first) continue;
 

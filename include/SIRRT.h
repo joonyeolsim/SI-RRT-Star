@@ -19,6 +19,7 @@ class SIRRT {
   int agent_id;
   SharedEnv& env;
   ConstraintTable& constraint_table;
+  double best_arrival_time = numeric_limits<double>::infinity();
 
   SIRRT(int agent_id, SharedEnv& env, ConstraintTable& constraint_table)
       : dis_width(env.radii[agent_id], env.width - env.radii[agent_id]),
