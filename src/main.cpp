@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
     radii.emplace_back(0.5 * 1.1);
     max_expand_distances.emplace_back(5.0);
     thresholds.emplace_back(0.01);
-    iterations.emplace_back(1200);
+    iterations.emplace_back(1500);
     goal_sample_rates.emplace_back(10.0);
   }
 
