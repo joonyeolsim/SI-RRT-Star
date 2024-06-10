@@ -7,7 +7,7 @@ class SharedEnv {
  public:
   vector<double> max_expand_distances;
   const double epsilon = 0.01;
-  double edge_moving_time = 1.0;
+  // double edge_moving_time = 1.0;
   double time_resolution = 0.1;
   double safe_margin = 0.1;
   vector<int> iterations;
