@@ -40,7 +40,8 @@ bool ConstraintTable::targetConstrained(int agent_id, const Point& from_point, c
 bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, const Point& to_point, double from_time,
                                       double to_time, double radius) const {
   assert(from_time < to_time);
-  const auto velocity_from2to = calculateDistance(from_point, to_point) / env.edge_moving_time;
+  // const auto velocity_from2to = calculateDistance(from_point, to_point) / env.edge_moving_time;
+  const auto velocity_from2to = env.max_velocities[agent_id];
   for (auto occupied_agent_id = 0; occupied_agent_id < path_table.size(); ++occupied_agent_id) {
     if (occupied_agent_id == agent_id) continue;
     if (path_table[occupied_agent_id].empty()) continue;
@@ -60,7 +61,8 @@ bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, con
       double start_time = max(from_time, prev_time);
       double end_time = min(to_time, next_time);
 
-      const auto velocity_prev2next = calculateDistance(prev_point, next_point) / env.edge_moving_time;
+      // const auto velocity_prev2next = calculateDistance(prev_point, next_point) / env.edge_moving_time;
+      const auto velocity_prev2next = env.max_velocities[occupied_agent_id];
 
       auto curr_time = start_time;
       while (curr_time < end_time) {
@@ -102,7 +104,8 @@ bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, con
 bool ConstraintTable::hardConstrained(int agent_id, const Point& from_point, const Point& to_point, double from_time,
                                       double to_time, double radius) const {
   assert(from_time < to_time);
-  const double velocity_from2to = calculateDistance(from_point, to_point) / env.edge_moving_time;
+  // const double velocity_from2to = calculateDistance(from_point, to_point) / env.edge_moving_time;
+  const double velocity_from2to = env.max_velocities[agent_id];
   for (auto [constrained_radius, constrained_path] : hard_constraint_table[agent_id]) {
     for (int i = 0; i < constrained_path.size() - 1; i++) {
       auto [prev_point, prev_time] = constrained_path[i];
@@ -119,7 +122,8 @@ bool ConstraintTable::hardConstrained(int agent_id, const Point& from_point, con
       double start_time = max(from_time, prev_time);
       double end_time = min(to_time, next_time);
 
-      const auto velocity_prev2next = calculateDistance(prev_point, next_point) / env.edge_moving_time;
+      // const auto velocity_prev2next = calculateDistance(prev_point, next_point) / env.edge_moving_time;
+      const auto velocity_prev2next = env.max_velocities[agent_id];
 
       auto curr_time = start_time;
       while (curr_time < end_time) {
@@ -226,18 +230,18 @@ void ConstraintTable::getSafeIntervalTable(int agent_id, const Point& to_point, 
   }
 }
 
-double ConstraintTable::getEarliestArrivalTime(int agent_id, const Point& from_point, const Point& to_point, double lower_bound, double upper_bound, double radius) const {
+double ConstraintTable::getEarliestArrivalTime(int agent_id, const Point& from_point, const Point& to_point, double expand_time, double lower_bound, double upper_bound, double radius) const {
   double earliest_arrival_time = lower_bound;
   while (earliest_arrival_time < upper_bound) {
     if (env.algorithm == "pp") {
-      if (targetConstrained(agent_id, from_point, to_point, earliest_arrival_time - env.edge_moving_time, earliest_arrival_time, radius)) return -1.0;
-      if (!pathConstrained(agent_id, from_point, to_point, earliest_arrival_time - env.edge_moving_time, earliest_arrival_time, radius))
+      if (targetConstrained(agent_id, from_point, to_point, earliest_arrival_time - expand_time, earliest_arrival_time, radius)) return -1.0;
+      if (!pathConstrained(agent_id, from_point, to_point, earliest_arrival_time - expand_time, earliest_arrival_time, radius))
         return earliest_arrival_time;
     } else if (env.algorithm == "cbs") {
-      if (!hardConstrained(agent_id, from_point, to_point, earliest_arrival_time - env.edge_moving_time, earliest_arrival_time, radius))
+      if (!hardConstrained(agent_id, from_point, to_point, earliest_arrival_time - expand_time, earliest_arrival_time, radius))
         return earliest_arrival_time;
     }
-    earliest_arrival_time += 1.0;
+    earliest_arrival_time += env.time_resolution;
   }
   return -1.0;
 }
@@ -279,11 +283,12 @@ void ConstraintTable::insertCollisionIntervalToSIT(vector<Interval>& safe_interv
 
 void ConstraintTable::interpolatePoint(int agent_id, const Point& from_point, const Point& to_point,
                                        vector<Point>& interpolated_points) const {
-  const double velocity = calculateDistance(from_point, to_point);
+  // const double velocity = calculateDistance(from_point, to_point) / env.edge_moving_time;
+  const double velocity = env.max_velocities[agent_id];
   const double theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
 
   double elapsed_time = 0.0;
-  while (elapsed_time < env.edge_moving_time) {
+  while (elapsed_time < calculateDistance(from_point, to_point) / velocity) {
     Point interpolated_point = from_point;
     if (theta != 0.0) {
       interpolated_point = make_tuple(get<0>(from_point) + velocity * cos(theta) * elapsed_time,
@@ -292,6 +297,7 @@ void ConstraintTable::interpolatePoint(int agent_id, const Point& from_point, co
     interpolated_points.emplace_back(interpolated_point);
     elapsed_time += env.time_resolution;
   }
+  interpolated_points.emplace_back(to_point);
 
   assert(!interpolated_points.empty());
 }
@@ -300,11 +306,12 @@ void ConstraintTable::interpolatePointTime(int agent_id, const Point& from_point
                                            double from_time, double to_time, vector<Point>& interpolated_points,
                                            vector<double>& interpolated_times) const {
   assert(from_time < to_time);
-  const double velocity = calculateDistance(from_point, to_point);
+  // const double velocity = calculateDistance(from_point, to_point) / env.edge_moving_time;
+  const double velocity = env.max_velocities[agent_id];
   const double theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
 
   double elapsed_time = 0.0;
-  while (elapsed_time < env.edge_moving_time) {
+  while (elapsed_time < calculateDistance(from_point, to_point) / velocity) {
     Point interpolated_point = from_point;
     if (theta != 0.0) {
       interpolated_point = make_tuple(get<0>(from_point) + velocity * cos(theta) * elapsed_time,
@@ -314,6 +321,8 @@ void ConstraintTable::interpolatePointTime(int agent_id, const Point& from_point
     interpolated_times.emplace_back(from_time + elapsed_time);
     elapsed_time += env.time_resolution;
   }
+  interpolated_points.emplace_back(to_point);
+  interpolated_times.emplace_back(to_time);
 
   assert(!interpolated_points.empty());
   assert(interpolated_points.size() == interpolated_times.size());
@@ -327,7 +336,8 @@ bool ConstraintTable::checkConflicts(const Solution &solution) const {
       Point to_point = get<0>(solution[agent_id1][i + 1]);
       double from_time = get<1>(solution[agent_id1][i]);
       double to_time = get<1>(solution[agent_id1][i + 1]);
-      const auto velocity_from2to = calculateDistance(from_point, to_point) / env.edge_moving_time;
+      // const auto velocity_from2to = calculateDistance(from_point, to_point) / env.edge_moving_time;
+      const auto velocity_from2to = env.max_velocities[agent_id1];
 
       for (auto agent_id2 = agent_id1 + 1; agent_id2 < solution.size(); ++agent_id2) {
         for (int j = 0; j < solution[agent_id2].size() - 1; ++j) {
@@ -335,7 +345,8 @@ bool ConstraintTable::checkConflicts(const Solution &solution) const {
           Point next_point = get<0>(solution[agent_id2][j + 1]);
           double prev_time = get<1>(solution[agent_id2][j]);
           double next_time = get<1>(solution[agent_id2][j + 1]);
-          const auto velocity_prev2next = calculateDistance(prev_point, next_point) / env.edge_moving_time;
+          // const auto velocity_prev2next = calculateDistance(prev_point, next_point) / env.edge_moving_time;
+          const auto velocity_prev2next = env.max_velocities[agent_id2];
 
           // check if temporal constraint is satisfied
           if (next_time <= from_time) continue;

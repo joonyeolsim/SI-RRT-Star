@@ -6,10 +6,10 @@
 class SharedEnv {
  public:
   vector<double> max_expand_distances;
+  vector<double> max_velocities;
   const double epsilon = 0.01;
-  double edge_moving_time = 1.0;
-  double time_resolution = 0.1;
-  double safe_margin = 0.1;
+  // double edge_moving_time = 10.0;
+  double time_resolution = 1.0;
   vector<int> iterations;
   vector<double> goal_sample_rates;
   int num_of_robots;
@@ -26,6 +26,7 @@ class SharedEnv {
 
   SharedEnv(int num_of_robots, int width, int height, const vector<Point>& start_points,
             const vector<Point>& goal_points, const vector<double>& radii, const vector<double>& max_expand_distances,
+            const vector<double>& max_velocities,
             const vector<int>& iterations, const vector<double>& goal_sample_rates,
             const vector<shared_ptr<Obstacle>>& obstacles, string algorithm)
       : num_of_robots(num_of_robots),
@@ -35,6 +36,7 @@ class SharedEnv {
         goal_points(goal_points),
         radii(radii),
         max_expand_distances(max_expand_distances),
+        max_velocities(max_velocities),
         iterations(iterations),
         goal_sample_rates(goal_sample_rates),
         obstacles(obstacles),
