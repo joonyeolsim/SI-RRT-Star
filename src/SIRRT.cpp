@@ -26,8 +26,9 @@ Path SIRRT::run() {
   auto goal_node = make_shared<LLNode>(goal_point, safe_interval_table.table[goal_point].back().first, numeric_limits<double>::infinity());
   goal_node->earliest_arrival_time = numeric_limits<double>::infinity();
 
-  int iteration = env.iterations[agent_id];
-  while (iteration--) {
+  int iteration = 0;
+  while (true) {
+    iteration++;
     Point random_point = generateRandomPoint();
     const shared_ptr<LLNode> nearest_node = getNearestNode(random_point);
     Point new_point = steer(nearest_node, random_point, safe_interval_table);
@@ -60,6 +61,10 @@ Path SIRRT::run() {
         assert(calculateDistance(new_node->point, goal_point) >= env.epsilon);
         nodes.push_back(new_node);
       }
+    }
+
+    if (best_arrival_time < numeric_limits<double>::infinity() && iteration >= env.iterations[agent_id]) {
+      break;
     }
   }
 

@@ -10,6 +10,7 @@ class SharedEnv {
   const double epsilon = 0.01;
   // double edge_moving_time = 10.0;
   double time_resolution = 1.0;
+  double check_time_resolution = 0.5;
   vector<int> iterations;
   vector<double> goal_sample_rates;
   int num_of_robots;

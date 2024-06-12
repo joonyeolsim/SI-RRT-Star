@@ -94,7 +94,7 @@ bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, con
           return true;
         }
 
-        curr_time += env.time_resolution;
+        curr_time += env.check_time_resolution;
       }
     }
   }
@@ -155,7 +155,7 @@ bool ConstraintTable::hardConstrained(int agent_id, const Point& from_point, con
           return true;
         }
 
-        curr_time += env.time_resolution;
+        curr_time += env.check_time_resolution;
       }
     }
   }
@@ -295,7 +295,7 @@ void ConstraintTable::interpolatePoint(int agent_id, const Point& from_point, co
                                       get<1>(from_point) + velocity * sin(theta) * elapsed_time);
     }
     interpolated_points.emplace_back(interpolated_point);
-    elapsed_time += env.time_resolution;
+    elapsed_time += env.check_time_resolution;
   }
   interpolated_points.emplace_back(to_point);
 
@@ -319,7 +319,7 @@ void ConstraintTable::interpolatePointTime(int agent_id, const Point& from_point
     }
     interpolated_points.emplace_back(interpolated_point);
     interpolated_times.emplace_back(from_time + elapsed_time);
-    elapsed_time += env.time_resolution;
+    elapsed_time += env.check_time_resolution;
   }
   interpolated_points.emplace_back(to_point);
   interpolated_times.emplace_back(to_time);
@@ -392,7 +392,7 @@ bool ConstraintTable::checkConflicts(const Solution &solution) const {
               return true;
             }
 
-            curr_time += env.time_resolution;
+            curr_time += env.check_time_resolution;
           }
         }
       }
