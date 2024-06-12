@@ -90,10 +90,6 @@ int main(int argc, char* argv[]) {
     for (int agent_id = 0; agent_id < num_of_agents; ++agent_id) {
       SIRRT sirrt(agent_id, env, constraint_table);
       auto path = sirrt.run();
-      while (path.empty()) {
-        cout << "Replanning for agent " << agent_id << endl;
-        path = sirrt.run();
-      }
       cout << "Agent " << agent_id << " found a solution" << endl;
       soluiton.emplace_back(path);
       sum_of_costs += get<1>(path.back());

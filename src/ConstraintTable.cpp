@@ -65,7 +65,7 @@ bool ConstraintTable::pathConstrained(int agent_id, const Point& from_point, con
       const auto velocity_prev2next = env.max_velocities[occupied_agent_id];
 
       auto curr_time = start_time;
-      while (curr_time < end_time) {
+      while (curr_time <= end_time) {
         // get point at start_time
         const auto occupied_moving_time = curr_time - prev_time;
         assert(occupied_moving_time >= 0.0);
@@ -126,7 +126,7 @@ bool ConstraintTable::hardConstrained(int agent_id, const Point& from_point, con
       const auto velocity_prev2next = env.max_velocities[agent_id];
 
       auto curr_time = start_time;
-      while (curr_time < end_time) {
+      while (curr_time <= end_time) {
         // get point at start_time
         const auto occupied_moving_time = curr_time - prev_time;
         assert(occupied_moving_time >= 0.0);
@@ -360,7 +360,7 @@ bool ConstraintTable::checkConflicts(const Solution &solution) const {
           double end_time = min(to_time, next_time);
 
           auto curr_time = start_time;
-          while (curr_time < end_time) {
+          while (curr_time <= end_time) {
             // get point at start_time
             const auto occupied_moving_time = curr_time - prev_time;
             assert(occupied_moving_time >= 0.0);

@@ -40,7 +40,7 @@ class SIRRT {
   void getNeighbors(Point point, vector<shared_ptr<LLNode>>& neighbors) const;
   vector<shared_ptr<LLNode>> chooseParent(const Point& new_point, const vector<shared_ptr<LLNode>>& neighbors,
                                   SafeIntervalTable& safe_interval_table) const;
-  void rewire(const shared_ptr<LLNode>& new_node, const vector<shared_ptr<LLNode>>& neighbors);
+  void rewire(const vector<shared_ptr<LLNode>>& new_nodes, const vector<shared_ptr<LLNode>>& neighbors);
   void release();
 };
 
