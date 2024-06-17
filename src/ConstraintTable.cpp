@@ -18,6 +18,7 @@ bool ConstraintTable::targetConstrained(int agent_id, const Point& from_point, c
   vector<double> interpolated_times;
   interpolatePointTime(agent_id, from_point, to_point, from_time, to_time, interpolated_points, interpolated_times);
   for (auto occupied_agent_id = 0; occupied_agent_id < path_table.size(); ++occupied_agent_id) {
+    if (occupied_agent_id == agent_id) continue;
     if (path_table[occupied_agent_id].empty()) continue;
     // target conflict
     auto [last_point, last_time] = path_table[occupied_agent_id].back();
@@ -330,30 +331,27 @@ void ConstraintTable::interpolatePointTime(int agent_id, const Point& from_point
 
 
 bool ConstraintTable::checkConflicts(const Solution &solution) const {
-  for (int agent_id1 = 0; agent_id1 < solution.size(); ++agent_id1) {
-    for (int i = 0; i < solution[agent_id1].size() - 1; ++i) {
-      Point from_point = get<0>(solution[agent_id1][i]);
-      Point to_point = get<0>(solution[agent_id1][i + 1]);
-      double from_time = get<1>(solution[agent_id1][i]);
-      double to_time = get<1>(solution[agent_id1][i + 1]);
-      // const auto velocity_from2to = calculateDistance(from_point, to_point) / env.edge_moving_time;
-      const auto velocity_from2to = env.max_velocities[agent_id1];
+  for (int agent1_id = 0; agent1_id < solution.size(); ++agent1_id) {
+    for (int i = 0; i < solution[agent1_id].size() - 1; ++i) {
+      auto [from_point, from_time] = solution[agent1_id][i];
+      auto [to_point, to_time] = solution[agent1_id][i + 1];
+      vector<Point> interpolated_points;
+      vector<double> interpolated_times;
+      interpolatePointTime(agent1_id, from_point, to_point, from_time, to_time, interpolated_points, interpolated_times);
 
-      for (auto agent_id2 = agent_id1 + 1; agent_id2 < solution.size(); ++agent_id2) {
-        for (int j = 0; j < solution[agent_id2].size() - 1; ++j) {
-          Point prev_point = get<0>(solution[agent_id2][j]);
-          Point next_point = get<0>(solution[agent_id2][j + 1]);
-          double prev_time = get<1>(solution[agent_id2][j]);
-          double next_time = get<1>(solution[agent_id2][j + 1]);
-          // const auto velocity_prev2next = calculateDistance(prev_point, next_point) / env.edge_moving_time;
-          const auto velocity_prev2next = env.max_velocities[agent_id2];
+      for (auto agent2_id = 0; agent2_id < solution.size(); ++agent2_id) {
+        if (agent1_id == agent2_id) continue;
+        // path conflict
+        for (int j = 0; j < solution[agent2_id].size() - 1; ++j) {
+          auto [prev_point, prev_time] = solution[agent2_id][j];
+          auto [next_point, next_time] = solution[agent2_id][j + 1];
 
           // check if temporal constraint is satisfied
           if (next_time <= from_time) continue;
           if (prev_time >= to_time) break;
           // check if spatial constraint is satisfied
           if (calculateDistance(from_point, prev_point) >=
-              calculateDistance(from_point, to_point) + env.radii[i] + calculateDistance(prev_point, next_point) + env.radii[j] + env.epsilon)
+              calculateDistance(from_point, to_point) + env.radii[agent1_id] + calculateDistance(prev_point, next_point) + env.radii[agent2_id] + env.epsilon)
             continue;
 
           double start_time = max(from_time, prev_time);
@@ -370,8 +368,8 @@ bool ConstraintTable::checkConflicts(const Solution &solution) const {
             auto occupied_point = prev_point;
             if (occupied_theta != 0.0) {
               occupied_point = make_tuple(
-                  get<0>(prev_point) + velocity_prev2next * cos(occupied_theta) * occupied_moving_time,
-                  get<1>(prev_point) + velocity_prev2next * sin(occupied_theta) * occupied_moving_time);
+                  get<0>(prev_point) + env.max_velocities[agent2_id] * cos(occupied_theta) * occupied_moving_time,
+                  get<1>(prev_point) + env.max_velocities[agent2_id] * sin(occupied_theta) * occupied_moving_time);
             }
 
             // get point2 at start_time
@@ -381,18 +379,38 @@ bool ConstraintTable::checkConflicts(const Solution &solution) const {
 
             auto point = from_point;
             if (theta != 0.0) {
-              point = make_tuple(get<0>(from_point) + velocity_from2to * cos(theta) * moving_time,
-                                 get<1>(from_point) + velocity_from2to * sin(theta) * moving_time);
+              point = make_tuple(get<0>(from_point) + env.max_velocities[agent1_id] * cos(theta) * moving_time,
+                                 get<1>(from_point) + env.max_velocities[agent1_id] * sin(theta) * moving_time);
             }
 
             if (calculateDistance(point, occupied_point) < env.radii[i] + env.radii[j] + env.epsilon) {
-              cout << "Agent " << agent_id1 << " and Agent " << agent_id2 << " have a conflict at time " << curr_time << endl;\
-              cout << "Point: (" << get<0>(point) << ", " << get<1>(point) << ")" << endl;
+              cout << "Agent " << agent1_id << " and Agent " << agent2_id << " have a conflict at time " << curr_time << endl;\
+              cout << "From: (" << get<0>(from_point) << ", " << get<1>(from_point) << "), t: " << from_time << endl;
+              cout << "To: (" << get<0>(to_point) << ", " << get<1>(to_point) << "), t: " << to_time << endl;
+              cout << "FTPoint: (" << get<0>(point) << ", " << get<1>(point) << ")" << endl;
+              cout << "Prev: (" << get<0>(prev_point) << ", " << get<1>(prev_point) << "), t: " << prev_time << endl;
+              cout << "Next: (" << get<0>(next_point) << ", " << get<1>(next_point) << "), t: " << next_time << endl;
+              cout << "PNPoint: (" << get<0>(occupied_point) << ", " << get<1>(occupied_point) << ")" << endl;
               cout << "Occupied Point: (" << get<0>(occupied_point) << ", " << get<1>(occupied_point) << ")" << endl;
               return true;
             }
 
             curr_time += env.check_time_resolution;
+          }
+        }
+
+        // target conflict
+        auto [last_point, last_time] = solution[agent2_id].back();
+        if (last_time >= to_time) continue;
+        if (calculateDistance(from_point, last_point) >= env.radii[agent1_id] + calculateDistance(from_point, to_point) + env.radii[agent2_id] + env.epsilon)
+          continue;
+        for (int j = 0; j < interpolated_points.size(); ++j) {
+          if (last_time >= interpolated_times[j]) continue;
+          if (calculateDistance(last_point, interpolated_points[j]) < env.radii[agent1_id] + env.radii[agent2_id] + env.epsilon) {
+            cout << "Agent " << agent1_id << " and Agent " << agent2_id << " have a conflict at time " << interpolated_times[j] << endl;
+            cout << "Point: (" << get<0>(interpolated_points[j]) << ", " << get<1>(interpolated_points[j]) << ")" << endl;
+            cout << "Last Point: (" << get<0>(last_point) << ", " << get<1>(last_point) << ")" << endl;
+            return true;
           }
         }
       }
