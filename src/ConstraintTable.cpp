@@ -383,7 +383,7 @@ bool ConstraintTable::checkConflicts(const Solution &solution) const {
                                  get<1>(from_point) + env.max_velocities[agent1_id] * sin(theta) * moving_time);
             }
 
-            if (calculateDistance(point, occupied_point) < env.radii[i] + env.radii[j] + env.epsilon) {
+            if (calculateDistance(point, occupied_point) < env.radii[agent1_id] + env.radii[agent2_id] + env.epsilon) {
               cout << "Agent " << agent1_id << " and Agent " << agent2_id << " have a conflict at time " << curr_time << endl;\
               cout << "From: (" << get<0>(from_point) << ", " << get<1>(from_point) << "), t: " << from_time << endl;
               cout << "To: (" << get<0>(to_point) << ", " << get<1>(to_point) << "), t: " << to_time << endl;
@@ -391,7 +391,7 @@ bool ConstraintTable::checkConflicts(const Solution &solution) const {
               cout << "Prev: (" << get<0>(prev_point) << ", " << get<1>(prev_point) << "), t: " << prev_time << endl;
               cout << "Next: (" << get<0>(next_point) << ", " << get<1>(next_point) << "), t: " << next_time << endl;
               cout << "PNPoint: (" << get<0>(occupied_point) << ", " << get<1>(occupied_point) << ")" << endl;
-              cout << "Occupied Point: (" << get<0>(occupied_point) << ", " << get<1>(occupied_point) << ")" << endl;
+              cout << "Distance: " << calculateDistance(point, occupied_point) << endl;
               return true;
             }
 
