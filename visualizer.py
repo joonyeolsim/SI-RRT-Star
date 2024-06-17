@@ -118,7 +118,7 @@ def detect_collisions(current_time):
         for j, agent2 in enumerate(agents):
             if i != j:
                 distance = np.linalg.norm(np.array(agent1.center) - np.array(agent2.center))
-                if distance < 2 * radius:
+                if distance < 2 * (radius * 0.9):
                     agents[i].set_color('red')
                     agents[j].set_color('red')
                     print(f"Collision detected between agent {i} and agent {j} at time {current_time:.2f}")
