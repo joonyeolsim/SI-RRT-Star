@@ -42,6 +42,7 @@ class SICBS {
   Solution run();
   Solution getInitialSolution();
   static double calculateCost(const Solution& solution);
+  void getConflicts(const Solution& solution, vector<Conflict>& conflicts) const;
   void findConflicts(const Solution& solution, vector<Conflict>& conflicts) const;
 };
 

@@ -244,4 +244,5 @@ void SIRRT::release() {
   nodes.clear();
   path.clear();
   goal_node = nullptr;
+  best_arrival_time = numeric_limits<double>::infinity();
 }

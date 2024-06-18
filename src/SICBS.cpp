@@ -9,7 +9,7 @@ Solution SICBS::run() {
     return {};
   }
   root.cost = calculateCost(root.solution);
-  findConflicts(root.solution, root.conflicts);
+  constraint_table.getConflicts(root.solution, root.conflicts);
 
   open_list.push(root);
   while (!open_list.empty()) {
@@ -77,7 +77,7 @@ Solution SICBS::run() {
       // update cost and conflicts
       new_node.cost = calculateCost(new_node.solution);
       new_node.conflicts.clear();
-      findConflicts(new_node.solution, new_node.conflicts);
+      constraint_table.getConflicts(new_node.solution, new_node.conflicts);
 
       // push new node to open list
       open_list.push(new_node);
@@ -88,16 +88,25 @@ Solution SICBS::run() {
 }
 
 Solution SICBS::getInitialSolution() {
-  Solution solution;
-  for (int agent_id = 0; agent_id < env.num_of_robots; ++agent_id) {
+  Solution solution(env.num_of_robots);
+  std::vector<std::thread> threads(env.num_of_robots);
+
+  auto plan_path = [&](int agent_id) {
     auto path = low_level_planners[agent_id].run();
-    while (path.empty()) {
-      cout << "Replanning for agent " << agent_id << endl;
-      path = low_level_planners[agent_id].run();
-    }
-    cout << "Agent " << agent_id << " found a path" << endl;
-    solution.emplace_back(path);
+    std::cout << "Agent " << agent_id << " found a path" << std::endl;
+    solution[agent_id] = path;
+  };
+
+  for (int agent_id = 0; agent_id < env.num_of_robots; ++agent_id) {
+    threads[agent_id] = std::thread(plan_path, agent_id);
   }
+
+  for (auto& thread : threads) {
+    if (thread.joinable()) {
+      thread.join();
+    }
+  }
+
   return solution;
 }
 
@@ -173,14 +182,14 @@ void SICBS::findConflicts(const Solution& solution, vector<Conflict>& conflicts)
         auto agent1_point = prev_point1;
         if (agent1_theta != 0.0) {
           agent1_point =
-              make_tuple(get<0>(prev_point1) + 1 * cos(agent1_theta) * agent1_expand_time,
-                         get<1>(prev_point1) + 1 * sin(agent1_theta) * agent1_expand_time);
+              make_tuple(get<0>(prev_point1) + env.max_velocities[agent1_id] * cos(agent1_theta) * agent1_expand_time,
+                         get<1>(prev_point1) + env.max_velocities[agent1_id] * sin(agent1_theta) * agent1_expand_time);
         }
         auto agent2_point = prev_point2;
         if (agent2_theta != 0.0) {
           agent2_point =
-              make_tuple(get<0>(prev_point2) + 1 * cos(agent2_theta) * agent2_expand_time,
-                         get<1>(prev_point2) + 1 * sin(agent2_theta) * agent2_expand_time);
+              make_tuple(get<0>(prev_point2) + env.max_velocities[agent2_id] * cos(agent2_theta) * agent2_expand_time,
+                         get<1>(prev_point2) + env.max_velocities[agent2_id] * sin(agent2_theta) * agent2_expand_time);
         }
 
         if (calculateDistance(agent1_point, agent2_point) < env.radii[agent1_id] + env.radii[agent2_id] & is_safe) {
@@ -202,7 +211,7 @@ void SICBS::findConflicts(const Solution& solution, vector<Conflict>& conflicts)
           partial_path1.clear();
           partial_path2.clear();
         }
-        curr_time += 1.0;
+        curr_time += env.check_time_resolution;
       }
     }
   }
