@@ -203,29 +203,37 @@ void ConstraintTable::getSafeIntervalTablePath(int agent_id, const Point& to_poi
 
 void ConstraintTable::getSafeIntervalTable(int agent_id, const Point& to_point, double radius,
                                            vector<Interval>& safe_intervals) const {
-  assert(safe_intervals.empty());
-  safe_intervals.emplace_back(0.0, numeric_limits<double>::infinity());
-  for (auto [constrained_radius, constrained_path] : hard_constraint_table[agent_id]) {
-    bool is_safe = true;
-    double collision_start_time = 0.0;
-    for (int i = 0; i < constrained_path.size(); ++i) {
-      auto [constrained_point, constrained_time] = constrained_path[i];
+    assert(safe_intervals.empty());
+    safe_intervals.emplace_back(0.0, numeric_limits<double>::infinity());
+    for (auto [constrained_radius, constrained_path] : hard_constraint_table[agent_id]) {
+        bool is_safe = true;
+        double collision_start_time = 0.0;
+        for (int i = 0; i < constrained_path.size() - 1; ++i) {
+            auto [prev_point, prev_time] = constrained_path[i];
+            auto [next_point, next_time] = constrained_path[i + 1];
 
-      if (is_safe && calculateDistance(to_point, constrained_point) < radius + constrained_radius + env.epsilon) {
-        is_safe = false;
-        collision_start_time = constrained_time;
-      } else if (!is_safe && calculateDistance(to_point, constrained_point) >= radius + constrained_radius + env.epsilon) {
-        is_safe = true;
-        assert(collision_start_time < constrained_time);
-        insertCollisionIntervalToSIT(safe_intervals, collision_start_time, constrained_time);
-        if (safe_intervals.empty()) return;
-      }
-    }
+            vector<Point> interpolated_points;
+            vector<double> interpolated_times;
+            interpolatePointTime(agent_id, prev_point, next_point, prev_time, next_time, interpolated_points,
+                                 interpolated_times);
+            for (int j = 0; j < interpolated_points.size(); ++j) {
+                if (is_safe && calculateDistance(to_point, interpolated_points[j]) < radius + constrained_radius + env.epsilon) {
+                    is_safe = false;
+                    collision_start_time = interpolated_times[j];
+                } else if (!is_safe && calculateDistance(to_point, interpolated_points[j]) >= radius + constrained_radius + env.epsilon) {
+                    is_safe = true;
+                    assert(collision_start_time < interpolated_times[j]);
+                    insertCollisionIntervalToSIT(safe_intervals, collision_start_time, interpolated_times[j]);
+                    if (safe_intervals.empty()) return;
+                }
+            }
+        }
 
-    if (!is_safe) {
-      insertCollisionIntervalToSIT(safe_intervals, collision_start_time, get<1>(constrained_path.back()) + env.check_time_resolution);
+        if (!is_safe) {
+            insertCollisionIntervalToSIT(safe_intervals, collision_start_time, get<1>(constrained_path.back()));
+            if (safe_intervals.empty()) return;
+        }
     }
-  }
 }
 
 double ConstraintTable::getEarliestArrivalTime(int agent_id, const Point& from_point, const Point& to_point, double expand_time, double lower_bound, double upper_bound, double radius) const {
@@ -380,7 +388,7 @@ bool ConstraintTable::checkConflicts(const Solution &solution) const {
                                  get<1>(from_point) + env.max_velocities[agent1_id] * sin(theta) * moving_time);
             }
 
-            if (calculateDistance(point, occupied_point) < env.radii[agent1_id] + env.radii[agent2_id] + env.epsilon) {
+            if (calculateDistance(point, occupied_point) < env.radii[agent1_id] + env.radii[agent2_id]) {
               cout << "Agent " << agent1_id << " and Agent " << agent2_id << " have a conflict at time " << curr_time << endl;\
               cout << "From: (" << get<0>(from_point) << ", " << get<1>(from_point) << "), t: " << from_time << endl;
               cout << "To: (" << get<0>(to_point) << ", " << get<1>(to_point) << "), t: " << to_time << endl;
@@ -403,7 +411,7 @@ bool ConstraintTable::checkConflicts(const Solution &solution) const {
           continue;
         for (int j = 0; j < interpolated_points.size(); ++j) {
           if (last_time >= interpolated_times[j]) continue;
-          if (calculateDistance(last_point, interpolated_points[j]) < env.radii[agent1_id] + env.radii[agent2_id] + env.epsilon) {
+          if (calculateDistance(last_point, interpolated_points[j]) < env.radii[agent1_id] + env.radii[agent2_id]) {
             cout << "Agent " << agent1_id << " and Agent " << agent2_id << " have a conflict at time " << interpolated_times[j] << endl;
             cout << "Point: (" << get<0>(interpolated_points[j]) << ", " << get<1>(interpolated_points[j]) << ")" << endl;
             cout << "Last Point: (" << get<0>(last_point) << ", " << get<1>(last_point) << ")" << endl;
@@ -414,76 +422,4 @@ bool ConstraintTable::checkConflicts(const Solution &solution) const {
     }
   }
   return false;
-}
-
-void ConstraintTable::getConflicts(const Solution& solution, vector<Conflict>& conflicts) const {
-  for (int agent1_id = 0; agent1_id < solution.size(); ++agent1_id) {
-    for (auto agent2_id = agent1_id + 1; agent2_id < solution.size(); ++agent2_id) {
-      Path partial_path1 = {};
-      Path partial_path2 = {};
-
-      auto from_index = 0;
-      auto prev_index = 0;
-      auto [from_point, from_time] = solution[agent1_id][from_index];
-      auto [to_point, to_time] = solution[agent1_id][from_index + 1];
-      auto [prev_point, prev_time] = solution[agent2_id][prev_index];
-      auto [next_point, next_time] = solution[agent2_id][prev_index + 1];
-
-      double max_time = max(get<1>(solution[agent1_id].back()), get<1>(solution[agent2_id].back()));
-      bool is_safe = true;
-      double curr_time = 0.0;
-      while (curr_time < max_time) {
-        while (to_time <= curr_time && from_index + 1 < solution[agent1_id].size()) {
-          from_point = to_point;
-          from_time = to_time;
-          from_index++;
-          next_point = get<0>(solution[agent1_id][from_index + 1]);
-          to_time = get<1>(solution[agent1_id][from_index + 1]);
-        }
-        while (next_time <= curr_time && prev_index + 1 < solution[agent2_id].size()) {
-          prev_point = next_point;
-          prev_time = next_time;
-          prev_index++;
-          next_point = get<0>(solution[agent2_id][prev_index + 1]);
-          next_time = get<1>(solution[agent2_id][prev_index + 1]);
-        }
-
-        auto agent1_moving_time = curr_time - from_time;
-        assert(agent1_moving_time >= 0.0);
-        auto agent1_theta = atan2(get<1>(to_point) - get<1>(from_point), get<0>(to_point) - get<0>(from_point));
-        auto agent1_point = from_point;
-        if (agent1_theta != 0.0) {
-          agent1_point = make_tuple(get<0>(from_point) + env.max_velocities[agent1_id] * cos(agent1_theta) * agent1_moving_time,
-                                    get<1>(from_point) + env.max_velocities[agent1_id] * sin(agent1_theta) * agent1_moving_time);
-        }
-
-        auto agent2_moving_time = curr_time - prev_time;
-        assert(agent2_moving_time >= 0.0);
-        auto agent2_theta = atan2(get<1>(next_point) - get<1>(prev_point), get<0>(next_point) - get<0>(prev_point));
-        auto agent2_point = prev_point;
-        if (agent2_theta != 0.0) {
-          agent2_point = make_tuple(get<0>(prev_point) + env.max_velocities[agent2_id] * cos(agent2_theta) * agent2_moving_time,
-                                    get<1>(prev_point) + env.max_velocities[agent2_id] * sin(agent2_theta) * agent2_moving_time);
-        }
-
-        if (is_safe && calculateDistance(agent1_point, agent2_point) < env.radii[agent1_id] + env.radii[agent2_id] + env.epsilon) {
-          is_safe = false;
-        } else if (!is_safe && calculateDistance(agent1_point, agent2_point) >= env.radii[agent1_id] + env.radii[agent2_id] + env.epsilon) {
-          is_safe = true;
-          partial_path1.emplace_back(make_tuple(agent1_point, curr_time));
-          partial_path2.emplace_back(make_tuple(agent2_point, curr_time));
-          conflicts.emplace_back(agent1_id, agent2_id, make_tuple(partial_path1, partial_path2));
-          partial_path1.clear();
-          partial_path2.clear();
-        }
-
-        if (!is_safe) {
-          partial_path1.emplace_back(make_tuple(agent1_point, curr_time));
-          partial_path2.emplace_back(make_tuple(agent2_point, curr_time));
-        }
-
-        curr_time += env.check_time_resolution;
-      }
-    }
-  }
 }

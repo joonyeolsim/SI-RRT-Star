@@ -9,7 +9,7 @@ Solution SICBS::run() {
     return {};
   }
   root.cost = calculateCost(root.solution);
-  constraint_table.getConflicts(root.solution, root.conflicts);
+  findConflicts(root.solution, root.conflicts);
 
   open_list.push(root);
   while (!open_list.empty()) {
@@ -77,7 +77,7 @@ Solution SICBS::run() {
       // update cost and conflicts
       new_node.cost = calculateCost(new_node.solution);
       new_node.conflicts.clear();
-      constraint_table.getConflicts(new_node.solution, new_node.conflicts);
+      findConflicts(new_node.solution, new_node.conflicts);
 
       // push new node to open list
       open_list.push(new_node);
@@ -121,9 +121,6 @@ double SICBS::calculateCost(const Solution& solution) {
 void SICBS::findConflicts(const Solution& solution, vector<Conflict>& conflicts) const {
   for (int agent1_id = 0; agent1_id < env.num_of_robots; ++agent1_id) {
     for (int agent2_id = agent1_id + 1; agent2_id < env.num_of_robots; ++agent2_id) {
-      assert(agent1_id != agent2_id);
-      assert(!solution[agent1_id].empty() && !solution[agent2_id].empty());
-
       Path partial_path1 = {};
       Path partial_path2 = {};
 
@@ -134,15 +131,13 @@ void SICBS::findConflicts(const Solution& solution, vector<Conflict>& conflicts)
       auto [prev_point2, prev_time2] = solution[agent2_id][index2];
       auto [next_point2, next_time2] = solution[agent2_id][index2 + 1];
 
-      const double max_path_time = max(get<1>(solution[agent1_id].back()), get<1>(solution[agent2_id].back()));
-
+      const double max_time = max(get<1>(solution[agent1_id].back()), get<1>(solution[agent2_id].back()));
       bool is_safe = true;
-
       double curr_time = 0.0;
-      while (curr_time < max_path_time) {
-        while (curr_time >= next_time1 && index1 < solution[agent1_id].size() - 2) {
+
+      while (curr_time < max_time) {
+        while (curr_time >= next_time1 && index1 + 2 < solution[agent1_id].size()) {
           if (!is_safe) {
-            assert(next_time1 >= get<1>(partial_path1.back()));
             partial_path1.emplace_back(make_tuple(next_point1, next_time1));
           }
           index1++;
@@ -151,9 +146,8 @@ void SICBS::findConflicts(const Solution& solution, vector<Conflict>& conflicts)
           next_point1 = get<0>(solution[agent1_id][index1 + 1]);
           next_time1 = get<1>(solution[agent1_id][index1 + 1]);
         }
-        while (curr_time >= next_time2 && index2 < solution[agent2_id].size() - 2) {
+        while (curr_time >= next_time2 && index2 + 2 < solution[agent2_id].size()) {
           if (!is_safe) {
-            assert(next_time2 >= get<1>(partial_path2.back()));
             partial_path2.emplace_back(make_tuple(next_point2, next_time2));
           }
           index2++;
@@ -192,12 +186,11 @@ void SICBS::findConflicts(const Solution& solution, vector<Conflict>& conflicts)
                          get<1>(prev_point2) + env.max_velocities[agent2_id] * sin(agent2_theta) * agent2_expand_time);
         }
 
-        if (calculateDistance(agent1_point, agent2_point) < env.radii[agent1_id] + env.radii[agent2_id] & is_safe) {
+        if (is_safe && calculateDistance(agent1_point, agent2_point) < env.radii[agent1_id] + env.radii[agent2_id]) {
           is_safe = false;
           partial_path1.emplace_back(make_tuple(agent1_point, curr_time));
           partial_path2.emplace_back(make_tuple(agent2_point, curr_time));
-        } else if (calculateDistance(agent1_point, agent2_point) >= env.radii[agent1_id] + env.radii[agent2_id] &
-                   !is_safe) {
+        } else if (!is_safe && calculateDistance(agent1_point, agent2_point) >= env.radii[agent1_id] + env.radii[agent2_id]) {
           is_safe = true;
           assert(curr_time >= get<1>(partial_path1.back()));
           assert(curr_time >= get<1>(partial_path2.back()));
